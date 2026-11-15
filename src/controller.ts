@@ -432,6 +432,8 @@ export class GraderController implements vscode.Disposable {
     const run = this.migrationRun;
     const live = () => run === this.migrationRun;
     this.inMigrationQueue(async () => {
+      await this.importOldLinks(); // links first, as at start: a .cedt-grader.json goes to the Trash only once copied
+      if (!live()) return;
       const offer = await migrateOldFiles(this.migrationDeps(live), true);
       if (!live()) return;
       this.cleanupOffer = null;

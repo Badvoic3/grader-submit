@@ -25,14 +25,15 @@ export const FULL_SCORE_BADGE = '✓';
 export const UNTRIED_BADGE = '–';
 export const TAG_COLORS = [1, 2, 3, 4, 5, 6].map((n) => `${COLOR}.tag${n}`);
 
-export function scoreBadge(counted: number | null): string {
+/** A raw-sum problem has no fixed maximum: its score is never "full" (✓ or the solved colour). */
+export function scoreBadge(counted: number | null, rawSum = false): string {
   if (counted === null) return UNTRIED_BADGE;
-  return counted >= SERVER_SCORE_CAP ? FULL_SCORE_BADGE : String(Math.floor(counted));
+  return counted >= SERVER_SCORE_CAP && !rawSum ? FULL_SCORE_BADGE : String(Math.floor(counted));
 }
 
-export function scoreColor(counted: number | null): string {
+export function scoreColor(counted: number | null, rawSum = false): string {
   if (counted === null) return `${COLOR}.untried`;
-  if (counted >= SERVER_SCORE_CAP) return `${COLOR}.solved`;
+  if (counted >= SERVER_SCORE_CAP && !rawSum) return `${COLOR}.solved`;
   return counted > 0 ? `${COLOR}.inProgress` : `${COLOR}.zero`;
 }
 
@@ -73,6 +74,6 @@ export function badgeView(p: Problem, how: LinkHow, mode: BadgeMode, colors: boo
     counted === null ? S.explorer.notTried : S.explorer.counted(scoreText(counted, rawSum).text),
     PICK_HOW[how],
   ].join(' · ');
-  const color = !colors || how === 'suggested' ? null : mode === 'score' ? scoreColor(counted) : tag ? tagColor(tag) : null;
-  return { badge: mode === 'score' ? scoreBadge(counted) : tag ? tagBadge(tag) : undefined, tooltip, color };
+  const color = !colors || how === 'suggested' ? null : mode === 'score' ? scoreColor(counted, rawSum) : tag ? tagColor(tag) : null;
+  return { badge: mode === 'score' ? scoreBadge(counted, rawSum) : tag ? tagBadge(tag) : undefined, tooltip, color };
 }

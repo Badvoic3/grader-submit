@@ -85,7 +85,7 @@ function norm(s: string): string {
  */
 export function matchLanguages(canonical: string, options: Language[]): Language[] {
   const aliases = ALIASES[canonical] ?? [norm(canonical)];
-  const exact = options.filter((o) => [o.name, o.code, o.ext].some((v) => aliases.includes(norm(v ?? ''))));
+  const exact = options.filter((o) => [o.name, o.code, (o.ext ?? '').replace(/^\./, '')].some((v) => aliases.includes(norm(v ?? '')))); // ext may come as `.py`
   if (exact.length) return exact;
   return options.filter((o) => {
     const n = norm(o.name);

@@ -71,7 +71,8 @@ async function findProbs(folders: readonly string[], saveLocation: string): Prom
     const src = sourceOf(path, prob.srcPath, existsSync);
     const home = folder ?? folders.find((f) => src && isAtOrInside(src, f));
     if (!home) continue;
-    const mtime = (await stat(path)).mtimeMs;
+    const mtime = (await stat(path).catch(() => null))?.mtimeMs;
+    if (mtime === undefined) continue; // gone since the scan
     out.push({ path, prob, src: src && isAtOrInside(src, home) && existsSync(src) ? src : '', mtime });
   }
   return out;
@@ -155,7 +156,9 @@ export async function migrateOldFiles(d: OldFilesDeps, again = false): Promise<(
   if (added) await d.changed();
   if (!d.live()) return null;
 
-  targets.push(...folders.map((f) => join(f, MAPPING_FILE_NAME)).filter(existsSync));
+  // Only once its links were copied: an import that failed (a lock, a read error) tries again on the next start.
+  const linksDone = new Set(d.ctx.globalState.get<string[]>(KEYS.linksImported, []));
+  targets.push(...folders.filter((f) => linksDone.has(pathKey(f))).map((f) => join(f, MAPPING_FILE_NAME)).filter(existsSync));
   const backups = d.ctx.globalState.get<BackupRecord[]>(KEYS.backups, []);
   const inScope = (p: string) => /\.prob\.bak$/.test(p) && existsSync(p) && [...folders, ...(saveLocation ? [saveLocation] : [])].some((f) => isAtOrInside(p, f));
   for (const b of backups) if (inScope(b.path) && !targets.includes(b.path)) targets.push(b.path);

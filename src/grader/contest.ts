@@ -5,8 +5,7 @@
  * `#countdown` element and fills `Date.parse('<contest end>')` only in
  * contest mode. "ANALYSIS MODE" (after an exam) is not a contest.
  *
- * This is deliberately minimal: the extension is a homework tool and only
- * warns. A fuller implementation (contest windows, per-problem contest
+ * This is deliberately minimal: the extension only warns. A fuller implementation (contest windows, per-problem contest
  * membership) could go here if ever needed.
  */
 export function isContestPage(html: string): boolean {

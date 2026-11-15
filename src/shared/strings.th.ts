@@ -17,7 +17,7 @@ import type { Strings } from './strings';
  * Everything else was reviewed at checkpoint B (2026-11-03). Add keys here
  * when a new text is translated without review.
  */
-export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun'];
+export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun', 'G.statusBar.compileError', 'S.migration.noticeDetail'];
 
 export const TH: Strings = {
   HOW_LINKED: {
@@ -351,7 +351,7 @@ export const TH: Strings = {
 
     migration: {
       notice: 'Grader Submit มีระบบรันทดสอบในตัวแล้ว และคัดลอกข้อมูลการเชื่อมโจทย์กับ test case เดิมมาให้เรียบร้อย',
-      noticeDetail: (n) => `มีไฟล์ระบบเก่า ${n} ไฟล์ในโฟลเดอร์นี้ที่ไม่ต้องใช้แล้ว จะย้ายไปถังขยะไหม?`,
+      noticeDetail: (n) => `มีไฟล์ระบบเก่า ${n} ไฟล์ในพื้นที่ทำงานนี้ที่ไม่ต้องใช้แล้ว จะย้ายไปถังขยะไหม?`,
       moveToTrash: 'ย้ายไปถังขยะ',
       whatsNew: 'ดูสิ่งใหม่',
       dontAskAgain: 'ไม่ต้องถามอีก',
@@ -722,6 +722,7 @@ export const TH: Strings = {
       submitWithScore: (score) => `${score}  Submit ไปยัง Grader`,
       submit: 'Submit ไปยัง Grader',
       counted: (n) => `, คะแนนที่นับ ${n}`,
+      compileError: 'CE',
     },
     rawSumTip: 'โจทย์ข้อนี้คิดคะแนนแบบรวมคะแนนดิบจากแต่ละเคส (ไม่มีคะแนนเต็มตายตัว)',
     statusGradingTip: 'Grader Submit: กำลังรอผลตรวจ คลิกเพื่อเปิดแผง Grader',

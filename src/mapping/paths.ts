@@ -50,7 +50,7 @@ export function remapPath(p: string, oldPath: string, newPath: string, caseInsen
   if (!prefixes.some((prefix) => pk.startsWith(prefix))) return null;
   // Keep the original spelling of the part below the moved folder.
   const np = normalizeAbsPath(p);
-  const depth = normalizeAbsPath(oldPath).split(sepRe).length;
+  const depth = normalizeAbsPath(oldPath).replace(/[\\/]+$/, '').split(sepRe).length; // `/` is one segment, not two
   const rest = np.split(sepRe).slice(depth).join(newPath.includes('\\') && !newPath.includes('/') ? '\\' : '/');
   const joiner = newPath.includes('\\') && !newPath.includes('/') ? '\\' : '/';
   return rest ? `${newPath.replace(/[\\/]+$/, '')}${joiner}${rest}` : newPath;

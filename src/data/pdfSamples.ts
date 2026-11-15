@@ -140,7 +140,9 @@ export async function readSampleTables(
       if (!grids.length) continue;
       const raw = ((await inTime(page.getTextContent())).items as RawItem[]).filter((i) => i.str && i.transform);
       const names = new Map<string, string>();
-      for (const id of new Set(raw.map((i) => i.fontName ?? ''))) names.set(id, await fontName(page, id));
+      const ids = [...new Set(raw.map((i) => i.fontName ?? ''))];
+      // Together and inside the time budget: each lookup can wait FONT_WAIT_MS, and a page can name many fonts.
+      (await inTime(Promise.all(ids.map((id) => fontName(page, id))))).forEach((n, k) => names.set(ids[k], n));
       const items: TextItem[] = raw.map((i) => ({
         x: i.transform![4],
         y: i.transform![5],

@@ -12,6 +12,7 @@ import { binaryOf, casesBySource, GRADER_ID_BASE, isProbPath, planProb, problemI
 import { migrateOldFiles, type OldFilesDeps } from '../src/migration/oldFiles';
 import { CaseStore } from '../src/runner/store';
 import { KEYS } from '../src/shared/stateKeys';
+import { pathKey } from '../src/mapping/paths';
 import { S } from '../src/shared/strings';
 
 const env = vi.hoisted(() => ({
@@ -433,12 +434,23 @@ describe('migrateOldFiles', () => {
     expect((await cases.read({ file: join(w, 'cf.cpp') })).cases).toEqual([]);
   });
 
+  it('a .cedt-grader.json whose links were not copied yet is never offered for the Trash', async () => {
+    write('hw/a.cpp');
+    write('.cedt-grader.json', '{"version":1,"files":{}}');
+    prob('hw/a.cpp', URL_OF(11), [G(1)]);
+    env.answers = ['trash'];
+    await run();
+    expect(env.trash).not.toContain(join(w, '.cedt-grader.json'));
+    expect(existsSync(join(w, '.cedt-grader.json'))).toBe(true);
+  });
+
   it('Move to Trash: only what is ours, and .cph/ only once empty', async () => {
     write('hw/a.cpp');
     write('hw/cf.cpp');
     write('hw/a.bin');
     write('hw/data.bin');
     write('.cedt-grader.json', '{"version":1,"files":{}}');
+    await ctx.globalState.update(KEYS.linksImported, [pathKey(w)]); // its links were copied at start
     const mine = prob('hw/a.cpp', URL_OF(11), [G(1)]);
     write(`hw/.cph/.a.cpp_${'a'.repeat(32)}.prob.bak`, '{}');
     const theirs = prob('hw/cf.cpp', 'https://codeforces.com/problemset/problem/1/A', [MINE(1)]);

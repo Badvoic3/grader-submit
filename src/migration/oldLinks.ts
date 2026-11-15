@@ -74,7 +74,7 @@ export function mappingKey(rel: string): string {
 function insideFolder(key: 'submitFile' | 'runFile', v: unknown): Partial<MappingEntry> {
   if (typeof v !== 'string') return {};
   const rel = normalizeRelPath(v);
-  return rel && !rel.startsWith('..') && insideWorkspace(rel) ? { [key]: rel } : {};
+  return rel && !rel.split('/').includes('..') && insideWorkspace(rel) ? { [key]: rel } : {}; // `..helpers.h` is a name, not a way out
 }
 
 /** A link as workspaceState and globalState held it. */

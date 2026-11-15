@@ -741,3 +741,26 @@ describe('a linked file outside the workspace', () => {
     });
   });
 });
+
+describe('a quick switch between two folders', () => {
+  it('the older, slower load never fills in its files under the newer folder', async () => {
+    const s = session();
+    const A = join(dir, 'A'), B = join(dir, 'B');
+    let releaseA: () => void = () => {};
+    const gateA = new Promise<void>((r) => (releaseA = r));
+    (s.folder as unknown as { sources(p: string): Promise<string[]> }).sources = async (p: string) => {
+      if (p === A) {
+        await gateA;
+        return ['a.cpp'];
+      }
+      return ['b.cpp'];
+    };
+    const entry = (id: number) => ({ problemId: id, name: 'x', baseUrl: BASE, folder: true as const });
+    const first = s.folder.load({ fsPath: A, entry: entry(1) });
+    await s.folder.load({ fsPath: B, entry: entry(2) });
+    releaseA();
+    await first;
+    expect(s.folder.link?.fsPath).toBe(B);
+    expect(s.folder.files).toEqual(['b.cpp']);
+  });
+});

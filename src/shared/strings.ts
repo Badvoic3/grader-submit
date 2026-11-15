@@ -354,7 +354,7 @@ const EN_S = {
 
   migration: {
     notice: 'Grader Submit now has its own test runner. Your links and test cases are already copied over.',
-    noticeDetail: (n: number) => (n === 1 ? "1 old file in this folder isn't needed any more. Move it to the Trash?" : `${n} old files in this folder aren't needed any more. Move them to the Trash?`),
+    noticeDetail: (n: number) => (n === 1 ? "1 old file in this workspace isn't needed any more. Move it to the Trash?" : `${n} old files in this workspace aren't needed any more. Move them to the Trash?`),
     moveToTrash: 'Move to Trash',
     whatsNew: "What's New",
     dontAskAgain: "Don't Ask Again",
@@ -735,6 +735,7 @@ const EN_G = {
     submitWithScore: (score: string) => `${score}  Submit to Grader`,
     submit: 'Submit to Grader',
     counted: (n: string) => `, counted ${n}`,
+    compileError: 'CE',
   },
   rawSumTip: 'This problem adds up raw test scores (raw-sum scoring), so there is no fixed maximum.',
   statusGradingTip: "Grader Submit: waiting for the result. Click to open the panel.",

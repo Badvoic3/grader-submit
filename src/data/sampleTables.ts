@@ -394,7 +394,7 @@ export function samplesFrom(tables: Table[]): SampleTable[] {
         const b = stripNotes(r[1] ?? '');
         return { input: a.text, output: b.text, annotated: a.annotated || b.annotated };
       })
-      .filter((c) => c.input && asciiShare(c.input + c.output) > ASCII_MIN);
+      .filter((c) => c.input && asciiShare(c.input + c.output) >= ASCII_MIN);
     const ok = cols >= 2 && cols <= 3 && cases.length > 0 && cases.length >= body.length / 2;
     const skipped = body.length - cases.length;
     if (ok && !header && prev && prev.pageNo === t.pageNo - 1 && sameXs(prev.xs, t.xs)) {

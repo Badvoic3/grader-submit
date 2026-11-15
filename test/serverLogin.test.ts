@@ -33,7 +33,7 @@ vi.mock('vscode', () => {
     ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
     StatusBarAlignment: { Left: 1, Right: 2 },
     EventEmitter: class { event = v.event; fire() {} dispose() {} },
-    Uri: { parse: uri, file: uri, joinPath: (_: unknown, ...p: string[]) => uri(p.join('/')) },
+    Uri: { parse: uri, file: uri, joinPath: (b: { fsPath?: string } | undefined, ...p: string[]) => uri([...(b?.fsPath ? [b.fsPath] : []), ...p].join('/')) },
     env: { language: 'en', openExternal: v.openExternal },
     commands: { executeCommand: async () => undefined, registerCommand: () => ({ dispose() {} }) },
     extensions: { getExtension: () => undefined, onDidChange: v.event },
@@ -61,7 +61,8 @@ vi.mock('vscode', () => {
       onDidChangeWorkspaceFolders: v.event,
       createFileSystemWatcher: () => ({ onDidCreate: v.event, onDidDelete: v.event, onDidChange: v.event, dispose() {} }),
       asRelativePath: (p: unknown) => String(p),
-      fs: { stat: async () => { throw new Error('none'); }, readFile: async () => { throw new Error('none'); } },
+      // Files in the test's temp folders are real (the old-links import reads them); anything else is missing.
+      fs: { stat: async () => { throw new Error('none'); }, readFile: async (u: { fsPath?: string }) => (await import('node:fs/promises')).readFile(String(u?.fsPath ?? '/nonexistent')) },
     },
   };
 });
@@ -248,7 +249,9 @@ describe('Clean Up Old Files', () => {
   it('asks again in a folder already answered', async () => {
     const s = start();
     const c = ready(s.c, { problems: [] });
-    await s.globalState.update(KEYS.cleanupSettled, [pathKey(folder('.cedt-grader.json'))]);
+    const answered = pathKey(folder('.cedt-grader.json'));
+    await s.globalState.update(KEYS.cleanupSettled, [answered]);
+    await s.globalState.update(KEYS.linksImported, [answered]); // its links were copied at start
     await c.cleanUpOldFiles();
     await vi.waitFor(() => expect(c.state().prompt?.text).toBe(S.migration.notice));
     expect(c.state().prompt?.detail).toBe(S.migration.noticeDetail(1));

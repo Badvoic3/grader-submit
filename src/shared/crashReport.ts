@@ -135,7 +135,7 @@ export function sanitize(text: string, ctx: SanitizeContext = {}): string {
     .replace(SOURCE_FILE, '<file>');
   for (const term of ctx.terms ?? []) {
     const t = term?.trim();
-    if (t && t.length >= 3) out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(t)}(?![\\p{L}\\p{N}])`, 'giu'), '<private>');
+    if (t && t.length >= 2) out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(t)}(?![\\p{L}\\p{N}])`, 'giu'), '<private>');
   }
   return out;
 }

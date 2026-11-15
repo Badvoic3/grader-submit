@@ -54,7 +54,7 @@ export function hasLoginForm(html: string): boolean {
 
 export function parseLoginForm(html: string): LoginForm {
   const $ = cheerio.load(html);
-  const form = $('form[action$="/login/login"]').first();
+  const form = $('form[action$="/login/login"], form[action*="/login/login?"]').first(); // as hasLoginForm
   return {
     present: form.length > 0,
     token:

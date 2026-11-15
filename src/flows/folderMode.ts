@@ -61,12 +61,18 @@ export class FolderMode {
 
   /** Folder mode for `link` (null = off): its source files, their texts and the detected roles. */
   async load(link: FolderLink | null, matched = false): Promise<void> {
+    // A quick switch starts another load before this one ends: only the newest fills in what it read.
+    const seq = ++this.loadSeq;
     this.link = link;
     this.matched = matched;
-    this.files = link ? await this.sources(link.fsPath) : [];
-    this.texts = link ? await this.textsOf(link.fsPath, this.files) : new Map();
-    this.roles = link ? detectFolderRoles(this.texts) : null;
+    const files = link ? await this.sources(link.fsPath) : [];
+    const texts = link ? await this.textsOf(link.fsPath, files) : new Map<string, string>();
+    if (seq !== this.loadSeq) return;
+    this.files = files;
+    this.texts = texts;
+    this.roles = link ? detectFolderRoles(texts) : null;
   }
+  private loadSeq = 0;
 
   /**
    * Remember the user's submit / run file for the folder (undefined = detect
@@ -83,7 +89,8 @@ export class FolderMode {
       this.matched = false;
       await h.links.refreshMappedIds();
     } else await h.mapping.setFolderRole(folder, h.cfg.baseUrl, key, rel);
-    this.link = { ...link, entry: { ...link.entry, [key]: rel } };
+    // Moved on to another folder meanwhile: the role was saved for that one, but it isn't shown any more.
+    if (this.link?.fsPath === link.fsPath) this.link = { ...link, entry: { ...link.entry, [key]: rel } };
   }
 
   /** Submit confirmed an automatic folder-name match: save the folder link. True when there was one. */
@@ -230,13 +237,14 @@ export class FolderMode {
 
   /** The C/C++ texts of a folder's source files (role detection), each read up to a size cap. */
   private async textsOf(folder: string, files: string[]): Promise<Map<string, string>> {
-    const out = new Map<string, string>();
-    for (const rel of files.filter((f) => CODE_FILE.test(f))) {
+    const read = async (rel: string): Promise<[string, string] | null> => {
       const p = join(folder, ...rel.split('/'));
       const st = await fsStat(p).catch(() => null);
-      if (st && st.size <= ATTACHMENT.maxRoleFileBytes) out.set(rel, await fsReadFile(p, 'utf8').catch(() => ''));
-    }
-    return out;
+      return st && st.size <= ATTACHMENT.maxRoleFileBytes ? [rel, await fsReadFile(p, 'utf8').catch(() => '')] : null;
+    };
+    // Together, not one after another: a package with 30 headers would otherwise wait on 60 disk calls in a row.
+    const read_ = await Promise.all(files.filter((f) => CODE_FILE.test(f)).map(read));
+    return new Map(read_.filter((x): x is [string, string] => x !== null));
   }
 
   /** The folder "Link the whole folder" would link for the active file (a workspace folder or one outside the workspace too), or why it can't. */
@@ -296,7 +304,8 @@ export class FolderMode {
     const files = await this.sources(dir.fsPath);
     const detected = detectFolderRoles(await this.textsOf(dir.fsPath, files)).submit;
     const own = relative(dir.fsPath, file.fsPath).split(sep).join('/');
-    const entry = { problemId: problem.id, name: problem.name, baseUrl: h.cfg.baseUrl, ...(detected || files.length === 1 ? {} : { submitFile: own }) };
+    // Only a source file can be the submit file (not the input.txt that happens to be open).
+    const entry = { problemId: problem.id, name: problem.name, baseUrl: h.cfg.baseUrl, ...(detected || files.length === 1 || !files.includes(own) ? {} : { submitFile: own }) };
     await h.mapping.linkFolder(dir, entry, h.cfg.baseUrl, true);
     const active = h.fileUri ?? file; // the user may have moved on while a question was open
     if (active.fsPath === file.fsPath) h.links.clearTempLink();

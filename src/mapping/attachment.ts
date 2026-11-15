@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { unzipSync } from 'fflate';
 import { ATTACHMENT } from '../shared/constants';
 import { S } from '../shared/strings';
@@ -193,7 +193,7 @@ export async function writeExtracted(dir: string, files: { rel: string; data: Ui
   for (const f of files) {
     const target = resolve(join(root, ...f.rel.split('/')));
     const rel = relative(root, target);
-    if (!rel || rel.startsWith('..') || rel.split(sep).includes('..')) throw new AttachmentError(S.attachment.unsafePath(f.rel));
+    if (!rel || isAbsolute(rel) || rel.split(sep).includes('..')) throw new AttachmentError(S.attachment.unsafePath(f.rel));
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, f.data, { flag: 'wx' });
   }

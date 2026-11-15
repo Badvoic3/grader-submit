@@ -1,3 +1,4 @@
+import { fmt } from '../grader/score';
 import { G } from '../shared/strings';
 import * as vscode from 'vscode';
 import type { ViewState } from '../shared/messages';
@@ -36,7 +37,7 @@ export class GraderStatusBar implements vscode.Disposable {
       this.item.text = `$(cloud-upload) ${G.statusBar.chooseProblem}`;
       this.item.tooltip = G.statusChooseTip;
     } else if (forThisProblem && r!.phase === 'done' && (r!.points !== null || r!.compileError)) {
-      const score = r!.compileError ? 'CE' : `${r!.points}`;
+      const score = r!.compileError ? G.statusBar.compileError : fmt(r!.points!);
       const counted = s.problem.score.counted;
       this.item.text = `$(cloud-upload) ${G.statusBar.submitWithScore(score)}`;
       this.item.tooltip = G.statusLastTip(s.problem.name, s.problem.id, score, counted !== null ? G.statusBar.counted(String(counted)) : '');
