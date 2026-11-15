@@ -231,27 +231,40 @@ function body(c: TestCaseView, r: CaseRun | undefined): HTMLElement {
   // Cut text would differ at the cut: it shows as it is, with nothing marked.
   const whole = actual && !actual.truncated && !c.expected.truncated;
   const diff = actual && whole ? diffOutputs(c.expected.text, actual.text) : { expected: plainLines(c.expected.text), actual: plainLines(actual?.text ?? '') };
-  const spaces = !!actual && [...diff.expected, ...diff.actual].some((l) => l.trail);
+  // A passed case shows its output once: Expected and Actual would say the same (user, 2026-11-15).
+  // Editing the expected output brings both back.
+  const passed = done && r.verdict === 'AC' && !!actual && !editingExpected.has(c.id);
+  const spaces = !passed && !!actual && [...diff.expected, ...diff.actual].some((l) => l.trail);
   return el('div', { class: 'det' },
     done ? el('div', { class: 'mem-line', title: W.memoryEstimate }, memoryOf(r.memoryKB)) : null,
     code ? el('div', { class: 'limit' }, code) : null,
     fold(W.caseInput, inOpen, () => { inputOpen.set(c.id, !inOpen); render(); }, copy('input', W.copyInput)),
     inOpen ? editor(c, 'input', W.caseInput) : null,
-    el('div', { class: 'cols' },
-      el('div', {},
-        el('div', { class: 'blk-h' }, W.caseExpected, el('span', { class: 'sp' }),
-          done && !c.expected.truncated && !head?.running
-            ? iconButton('edit', W.editExpected, () => { editingExpected.add(c.id); render(); })
-            : null,
-          copy('expected', W.copyExpected),
+    passed
+      ? el('div', { class: 'out' },
+          el('div', { class: 'blk-h' }, W.caseOutput, el('span', { class: 'sp' }),
+            !c.expected.truncated && !head?.running
+              ? iconButton('edit', W.editExpected, () => { editingExpected.add(c.id); render(); })
+              : null,
+            copy('actual', W.copyOutput),
+          ),
+          block(plainLines(actual.text)),
+        )
+      : el('div', { class: 'cols' },
+        el('div', {},
+          el('div', { class: 'blk-h' }, W.caseExpected, el('span', { class: 'sp' }),
+            done && !c.expected.truncated && !head?.running
+              ? iconButton('edit', W.editExpected, () => { editingExpected.add(c.id); render(); })
+              : null,
+            copy('expected', W.copyExpected),
+          ),
+          editExpected ? editor(c, 'expected', W.caseExpected) : block(diff.expected, 'del'),
         ),
-        editExpected ? editor(c, 'expected', W.caseExpected) : block(diff.expected, 'del'),
+        actual ? el('div', {}, el('div', { class: 'blk-h' }, W.caseActual), block(diff.actual, 'add')) : null,
       ),
-      actual ? el('div', {}, el('div', { class: 'blk-h' }, W.caseActual), block(diff.actual, 'add')) : null,
-    ),
     spaces ? el('div', { class: 'hint' }, icon('info'), ' ', W.spacesDontCount) : null,
     actual?.truncated ? el('div', { class: 'hint' }, icon('info'), ' ', W.outputCut) : null,
-    actual
+    actual && !passed
       ? el('div', { class: 'acts' },
           button([icon('diff'), ` ${W.compareInCode}`], () => send({ type: 'compare', caseId: c.id }), { title: W.compareInCodeTip }),
           copy('actual', W.copyActual),

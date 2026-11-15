@@ -111,7 +111,11 @@ describe('Thai table (strings.th.ts)', () => {
   it('review list names real keys and is empty for release', () => {
     const paths = leaves.map((l) => l.path);
     for (const k of TH_REVIEW) expect(paths.some((p) => p === k || p.startsWith(`${k}.`)), k).toBe(true);
-    expect(TH_REVIEW).toEqual([]);
+    // Between releases the list holds the new drafts. Once package.json carries the version of the newest
+    // CHANGELOG section (the release bump), every draft must have been reviewed.
+    const version = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version;
+    const newest = /^## (\d+\.\d+\.\d+)/m.exec(readFileSync(join(__dirname, '..', 'CHANGELOG.md'), 'utf8'))?.[1];
+    if (newest === version) expect(TH_REVIEW).toEqual([]);
   });
 
   it('switching to Thai changes what callers read', () => {

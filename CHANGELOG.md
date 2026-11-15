@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.2 — Unreleased
+
+### Test view
+- **The input always shows** on every case, passed or failed (it used to fold away once a case had run). Its fold still closes it.
+- **A passed case shows one Output block** instead of Expected and Actual side by side. A failed case still shows both, with the differences marked.
+
 ## 1.1.1 — 2026-11-09
 
 ### Break scenes & theme colouring

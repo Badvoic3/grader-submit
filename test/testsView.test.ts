@@ -147,6 +147,36 @@ describe('Test view', () => {
     expect(a2.querySelector('.fold')!.getAttribute('aria-expanded')).toBe('false');
   });
 
+  it('a passed case shows one Output block; a failed one shows Expected and Actual with Compare and Set', () => {
+    const { doc, sent, post, label } = boot();
+    post({ fresh: true, head: head(), order: ['a', 'b'], cases: [kase('a'), kase('b')], runs: { a: done('a', 'AC', { actual: text('3\n') }), b: done('b', 'WA') } });
+    label('Show this case').click();
+    const [a, b] = [...doc.querySelectorAll('.card')];
+    const heads = (card: Element) => [...card.querySelectorAll('.blk-h')].map((h) => h.textContent!.trim());
+    expect(heads(a)).toEqual(['Input', 'Output']);
+    expect(a.querySelector('.out .dt')!.textContent).toBe('13');
+    expect(a.querySelector('.acts')).toBeNull();
+    expect(a.querySelector('[aria-label="Set Actual as Expected"]')).toBeNull();
+    expect(a.textContent).not.toContain('Compare in VS Code');
+    (a.querySelector('[aria-label="Copy the output"]') as HTMLButtonElement).click();
+    expect(sent.at(-1)).toEqual({ type: 'copy', caseId: 'a', what: 'actual' });
+    expect(heads(b)).toEqual(['Input', 'Expected', 'Actual']);
+    expect(b.querySelector('.cols .dl.del')).not.toBeNull();
+    expect(b.querySelector('.acts')!.textContent).toContain('Compare in VS Code');
+    expect(b.querySelector('[aria-label="Set Actual as Expected"]')).not.toBeNull();
+  });
+
+  it('editing the expected output of a passed case brings both columns back', () => {
+    const { doc, post, label } = boot();
+    post({ fresh: true, head: head(), order: ['a'], cases: [kase('a')], runs: { a: done('a', 'AC', { actual: text('3\n') }) } });
+    label('Show this case').click();
+    label('Edit the expected output').click();
+    const card = doc.querySelector('.card')!;
+    expect(card.querySelector('.out')).toBeNull();
+    expect(card.querySelector<HTMLTextAreaElement>('textarea[aria-label="Expected"]')!.value).toBe('3\n');
+    expect(card.textContent).toContain('Actual');
+  });
+
   it('only the first failed case opens by itself', () => {
     const { doc, post } = boot();
     post({ fresh: true, head: head(), order: ['a', 'b', 'c'], cases: [kase('a'), kase('b'), kase('c')], runs: { a: done('a', 'AC'), b: done('b', 'WA'), c: done('c', 'TLE') } });

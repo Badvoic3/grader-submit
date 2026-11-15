@@ -17,7 +17,7 @@ import type { Strings } from './strings';
  * Everything else was reviewed at checkpoint B (2026-11-03). Add keys here
  * when a new text is translated without review.
  */
-export const TH_REVIEW: readonly string[] = [];
+export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput'];
 
 export const TH: Strings = {
   HOW_LINKED: {
@@ -660,11 +660,13 @@ export const TH: Strings = {
     caseInput: 'อินพุต',
     caseExpected: 'ผลที่ควรได้',
     caseActual: 'ผลที่ได้จริง',
+    caseOutput: 'เอาต์พุต',
     caseStderr: 'Stderr',
     editExpected: 'แก้ไขผลที่ควรได้',
     copyInput: 'คัดลอกอินพุต',
     copyExpected: 'คัดลอกผลที่ควรได้',
     copyActual: 'คัดลอกผลที่ได้จริง',
+    copyOutput: 'คัดลอกเอาต์พุต',
     copyStderr: 'คัดลอกข้อความ stderr',
     copyError: 'คัดลอกข้อความข้อผิดพลาด',
     setExpected: 'ใช้ผลที่ได้จริงเป็นคำตอบ',
