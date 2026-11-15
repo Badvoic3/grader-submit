@@ -53,9 +53,11 @@ export class RequestCache {
       return pending as Promise<T>;
     }
     this.log(`cache miss ${key}${force ? ' (refresh)' : this.entries.has(key) ? ' (stale)' : ''}`);
+    const gen = this.gen;
     const p = fetch()
       .then((v) => {
-        if (f.kind !== 'final' || f.final(v)) this.entries.set(key, { value: v, at: this.now() });
+        // A request that started before `clear()` (another account) never fills the cache.
+        if (gen === this.gen && (f.kind !== 'final' || f.final(v))) this.entries.set(key, { value: v, at: this.now() });
         return v;
       })
       .finally(() => this.inflight.delete(key));
@@ -83,7 +85,14 @@ export class RequestCache {
   }
 
   clear(): void {
+    this.gen++;
     this.entries.clear();
     this.inflight.clear();
   }
+
+  /** Bumped by `clear()`: work started before it belongs to the previous account. */
+  get generation(): number {
+    return this.gen;
+  }
+  private gen = 0;
 }

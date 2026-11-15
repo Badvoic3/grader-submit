@@ -44,12 +44,27 @@ export class SubmitFlow {
     this.pollAbort?.abort();
   }
 
+  /** Between Submit and the request: the questions and checks before it. A second Submit then does nothing. */
+  private starting = false;
+
   async submit(): Promise<void> {
-    const h = this.host;
     if (this.busy) {
       void vscode.window.showInformationMessage(S.submit.alreadyGrading);
       return;
     }
+    if (this.starting) return; // e.g. the shortcut pressed twice: one submission at a time
+    this.starting = true;
+    try {
+      await this.startSubmit();
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  private async startSubmit(): Promise<void> {
+    const h = this.host;
+    // The account it started for: settings changed during a question mean another server (not this problem's).
+    const client = h.client;
     if (!h.fileUri) {
       void vscode.window.showInformationMessage(S.submit.openToSubmit);
       return;
@@ -167,12 +182,13 @@ export class SubmitFlow {
         return;
       }
 
+      if (h.client !== client) return;
       // Busy from here on (questions above don't lock the panel).
       this.busy = true;
       this.gradingFile = key;
       h.fun.activity();
       this.setResult(key, newResult(problem, 'submitting', S.submit.submitting));
-      const sub = await h.client.submit(problem.id, languageId!, doc.getText(), fileName);
+      const sub = await client.submit(problem.id, languageId!, doc.getText(), fileName);
       sentId = sub.id;
       h.connectionOk();
       this.updateResult(key, {

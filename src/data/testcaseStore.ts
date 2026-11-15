@@ -32,8 +32,9 @@ export class TestcaseStore {
     private readonly onWrite: (path: string) => void = () => {},
   ) {}
 
-  private file(problemId: number): string {
-    return join(this.dir, 'testcases', new URL(this.client().baseUrl).host.replace(/[^a-z0-9.-]/gi, '_'), `${problemId}.json`);
+  /** `c`: the client a download started with, so a switch meanwhile can't file it under the next server. */
+  private file(problemId: number, c = this.client()): string {
+    return join(this.dir, 'testcases', new URL(c.baseUrl).host.replace(/[^a-z0-9.-]/gi, '_'), `${problemId}.json`);
   }
 
   async get(
@@ -68,8 +69,8 @@ export class TestcaseStore {
       opts.onProgress?.(++done, sorted.length);
     }
     try {
-      await writeAtomic(this.file(problemId), JSON.stringify(set));
-      this.onWrite(this.file(problemId));
+      await writeAtomic(this.file(problemId, c), JSON.stringify(set));
+      this.onWrite(this.file(problemId, c));
     } catch (err) {
       this.log(`testcase cache not written: ${err instanceof Error ? err.message : err}`);
     }

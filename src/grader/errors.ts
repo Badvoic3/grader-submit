@@ -109,4 +109,7 @@ export class SubmitRejectedError extends GraderError {}
 
 export class PollTimeoutError extends GraderError {}
 
+/** A login that finished after Log out or an account switch: its result is dropped, never shown or acted on. */
+export class LoginSupersededError extends GraderError {}
+
 export class ParseError extends GraderError {}

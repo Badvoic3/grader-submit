@@ -19,6 +19,7 @@ import {
   type Language,
   languageForPath,
   languageNameForPath,
+  LoginSupersededError,
   NetworkError,
   ProblemUnavailableError,
   type Problem,
@@ -1144,6 +1145,7 @@ export class GraderController implements vscode.Disposable {
       return true;
     } catch (err) {
       if (client !== this.client) return false; // a Retry would send these credentials to the new server
+      if (err instanceof LoginSupersededError) return false; // Log out came first: nothing to show
       const conn = classifyConnectionError(err);
       if (conn && conn.kind !== 'session') {
         this.accountStatus = 'logged-out';

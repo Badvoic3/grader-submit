@@ -175,8 +175,15 @@ export class DataService {
     }
     this.pendingProblems = false;
     const fresh = !force && this.cache.isFresh('problems', SESSION);
-    const list = await this.run('problems', () => this.cache.get('problems', SESSION, () => this.opts.client().listProblems(), force));
-    if (list && !fresh) {
+    const gen = this.cache.generation;
+    let ok = false;
+    const list = await this.run('problems', async () => {
+      const l = await this.cache.get('problems', SESSION, () => this.opts.client().listProblems(), force);
+      ok = true;
+      return l;
+    });
+    if (gen !== this.cache.generation) return undefined; // the account changed meanwhile
+    if (list && !fresh && ok) {
       this.savePersisted();
       this.onProblemsLoaded();
     }
@@ -217,13 +224,14 @@ export class DataService {
     }
     const prevList = this.problemList();
     const previous = prevList?.problems;
+    const gen = this.cache.generation;
     await Promise.all([
       this.loadHistory(problemId, true),
       this.run('problems', () =>
         this.cache.get('problems', SESSION, () => this.opts.client().listProblems({ penalties: false, previous, previousTopics: prevList?.topics ?? null }), true),
       ),
     ]);
-    this.savePersisted();
+    if (gen === this.cache.generation) this.savePersisted();
   }
 
   /** Replace one problem in the cached list (e.g. after a fresh per-problem fetch). */
@@ -319,14 +327,17 @@ export class DataService {
 
   /** Track loading / stale / error per key; on network trouble keep the cached value. */
   private async run<T>(key: string, fn: () => Promise<T>): Promise<T | undefined> {
+    const gen = this.cache.generation;
     this.states.set(key, { loading: true, stale: this.states.get(key)?.stale ?? false, error: null });
     this.onChange();
     try {
       const v = await fn();
+      if (gen !== this.cache.generation) return undefined; // started for the previous account
       this.states.set(key, IDLE);
       this.onSuccess();
       return v;
     } catch (err) {
+      if (gen !== this.cache.generation) return undefined; // its error belongs to the previous account
       const cached = this.cache.peek<T>(key);
       const msg = this.opts.describe?.(err) ?? (err instanceof Error ? err.message : String(err));
       // Connection problems are shown once, in the banner; the section only says "may be out of date".

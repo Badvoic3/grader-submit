@@ -28,8 +28,9 @@ export class StatementStore {
     private readonly onWrite: (path: string) => void = () => {},
   ) {}
 
-  private folder(): string {
-    return join(this.dir, 'statements', new URL(this.client().baseUrl).host.replace(/[^a-z0-9.-]/gi, '_'));
+  /** `c`: the client a download started with, so a switch meanwhile can't file it under the next server. */
+  private folder(c = this.client()): string {
+    return join(this.dir, 'statements', new URL(c.baseUrl).host.replace(/[^a-z0-9.-]/gi, '_'));
   }
 
   async get(problemId: number, opts: { refresh?: boolean } = {}): Promise<Statement> {
@@ -73,7 +74,7 @@ export class StatementStore {
       const d = await c.getDescription(problemId);
       st = d ? { kind: 'description', markdown: d.markdown, text: d.description } : { kind: 'none', reason: pdf.status === 403 ? 'hidden' : 'missing' };
     }
-    await this.writeCache(problemId, st);
+    await this.writeCache(problemId, st, this.folder(c));
     return st;
   }
 
@@ -96,8 +97,8 @@ export class StatementStore {
     }
   }
 
-  private async writeCache(id: number, st: Statement): Promise<void> {
-    const base = join(this.folder(), String(id));
+  private async writeCache(id: number, st: Statement, folder: string): Promise<void> {
+    const base = join(folder, String(id));
     const path = st.kind === 'pdf' ? `${base}.pdf` : `${base}.json`;
     try {
       await rm(`${base}.pdf`, { force: true });

@@ -2,7 +2,7 @@ import { G } from '../../../shared/strings';
 import { ApiClient, type ApiLanguage, type ApiProblem, type ApiSubmission, type ApiSubmissionBrief } from './api';
 import { type Attachment, parseContentDisposition } from '../../attachment';
 import { isContestPage } from '../../contest';
-import { AuthError, GraderError, NetworkError, PollTimeoutError, SessionExpiredError } from '../../errors';
+import { AuthError, GraderError, LoginSupersededError, NetworkError, ParseError, PollTimeoutError, SessionExpiredError } from '../../errors';
 import type { Logger } from './http';
 import { Redactor } from '../../redact';
 import type {
@@ -64,6 +64,13 @@ export class GraderClient implements GraderProvider {
   private readonly sleep: NonNullable<GraderProviderOptions['sleep']>;
   private tokenExpiresAt = 0;
   private loginInFlight: Promise<GraderUser> | null = null;
+  /** Bumped by `logout()`: a login still in flight then saves nothing. */
+  private epoch = 0;
+  /**
+   * The website refused the last web login (wrong password, agreement, throttled, an unreadable form).
+   * No web login is tried again until the next API login: the server throttles failed logins.
+   */
+  private webLoginRefused = false;
   private languagesCache: Language[] | null = null;
   private listHtml: string | null = null;
   /** When `listHtml` was fetched; the login landing page is reused for the first list load. */
@@ -124,33 +131,68 @@ export class GraderClient implements GraderProvider {
    */
   login(creds?: Credentials): Promise<GraderUser> {
     if (!this.loginInFlight) {
-      this.loginInFlight = this.doLogin(creds).finally(() => {
-        this.loginInFlight = null;
+      const p: Promise<GraderUser> = this.doLogin(creds).finally(() => {
+        if (this.loginInFlight === p) this.loginInFlight = null; // Log out may have started another meanwhile
       });
+      this.loginInFlight = p;
     }
     return this.loginInFlight;
   }
 
   private async doLogin(given?: Credentials): Promise<GraderUser> {
+    const epoch = this.epoch;
+    const superseded = () => {
+      if (epoch === this.epoch) return false;
+      if (!this.user) this.api.setToken(null); // the API login set it again
+      return true;
+    };
     const creds = given ?? (await this.opts.getStoredCredentials?.());
+    if (superseded()) throw new LoginSupersededError(G.notLoggedIn);
     if (!creds?.username || !creds.password) {
       throw new AuthError(G.logInFirst, 'no-credentials');
     }
     this.redactor.add(creds.password);
-    const res = await this.api.login(creds.username, creds.password);
+    let res: Awaited<ReturnType<ApiClient['login']>>;
+    try {
+      res = await this.api.login(creds.username, creds.password);
+    } catch (err) {
+      // After Log out or a switch, a late "wrong password" must not reach the next account's saved password.
+      if (superseded()) throw new LoginSupersededError(G.notLoggedIn);
+      throw err;
+    }
+    if (superseded()) throw new LoginSupersededError(G.notLoggedIn);
     this.tokenExpiresAt = Date.parse(res.expires_at) || this.now().getTime() + TIMING.tokenFallbackTtlMs;
     this.user = { id: res.user.id, login: res.user.login, fullName: res.user.full_name };
+    this.webLoginRefused = false;
     await this.opts.tokenStore?.save({ token: res.token, expiresAt: new Date(this.tokenExpiresAt).toISOString() });
+    if (epoch !== this.epoch) {
+      // Logged out while the token was being saved: take it back out.
+      await this.opts.tokenStore?.save(undefined);
+      throw new LoginSupersededError(G.notLoggedIn);
+    }
     // Web session for /main/list (penalties). Its failure does not fail the login.
     try {
-      this.setListHtml(await (await this.web()).login(creds.username, creds.password));
+      this.setListHtml(await this.webLogin(creds));
     } catch (err) {
       this.opts.log?.(`Web login skipped: ${err instanceof Error ? err.message : err}`);
     }
     return this.user;
   }
 
+  /** One web login; a refusal (not a connection problem) stops further automatic tries. */
+  private async webLogin(creds: Credentials): Promise<string> {
+    if (this.webLoginRefused) throw new SessionExpiredError(G.noWebSession, false);
+    try {
+      return await (await this.web()).login(creds.username, creds.password);
+    } catch (err) {
+      if (err instanceof AuthError || err instanceof ParseError) this.webLoginRefused = true;
+      throw err;
+    }
+  }
+
   async logout(): Promise<void> {
+    this.epoch++;
+    this.loginInFlight = null;
     this.api.setToken(null);
     this.tokenExpiresAt = 0;
     this.webSession?.clear();
@@ -238,7 +280,7 @@ export class GraderClient implements GraderProvider {
     if (!web.isLoggedIn) {
       const creds = await this.opts.getStoredCredentials?.();
       if (!creds) throw new SessionExpiredError(G.noWebSession, false);
-      return this.setListHtml(await web.login(creds.username, creds.password));
+      return this.setListHtml(await this.webLogin(creds));
     }
     try {
       return this.setListHtml(await web.problemListPage());
@@ -246,7 +288,7 @@ export class GraderClient implements GraderProvider {
       if (!(err instanceof SessionExpiredError)) throw err;
       const creds = await this.opts.getStoredCredentials?.();
       if (!creds) throw err;
-      return this.setListHtml(await web.login(creds.username, creds.password));
+      return this.setListHtml(await this.webLogin(creds));
     }
   }
 
@@ -266,14 +308,14 @@ export class GraderClient implements GraderProvider {
     const { parseProblemLimits } = await import('./parsers');
     if (!web.isLoggedIn) {
       const c = await creds();
-      this.setListHtml(await web.login(c.username, c.password));
+      this.setListHtml(await this.webLogin(c));
     }
     try {
       return parseProblemLimits(await web.problemPage(problemId));
     } catch (err) {
       if (!(err instanceof SessionExpiredError)) throw err;
       const c = await creds();
-      this.setListHtml(await web.login(c.username, c.password));
+      this.setListHtml(await this.webLogin(c));
       return parseProblemLimits(await web.problemPage(problemId));
     }
   }
