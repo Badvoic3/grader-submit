@@ -132,6 +132,21 @@ describe('Test view', () => {
     expect(doc.querySelector('img')).toBeNull();
   });
 
+  it('the input shows on a passed and on a failed case, and its fold still closes it', () => {
+    const { doc, post, label } = boot();
+    post({ fresh: true, head: head(), order: ['a', 'b'], cases: [kase('a'), kase('b')], runs: { a: done('a', 'AC', { actual: text('3\n') }), b: done('b', 'WA') } });
+    label('Show this case').click(); // a: passed cases start closed
+    const [a, b] = [...doc.querySelectorAll('.card')];
+    for (const card of [a, b]) {
+      expect(card.querySelector('.fold')!.getAttribute('aria-expanded')).toBe('true');
+      expect(card.querySelector<HTMLTextAreaElement>('textarea[aria-label="Input"]')!.value).toBe('1 2\n');
+    }
+    a.querySelector<HTMLButtonElement>('.fold')!.click();
+    const a2 = doc.querySelectorAll('.card')[0];
+    expect(a2.querySelector('textarea[aria-label="Input"]')).toBeNull();
+    expect(a2.querySelector('.fold')!.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('only the first failed case opens by itself', () => {
     const { doc, post } = boot();
     post({ fresh: true, head: head(), order: ['a', 'b', 'c'], cases: [kase('a'), kase('b'), kase('c')], runs: { a: done('a', 'AC'), b: done('b', 'WA'), c: done('c', 'TLE') } });
@@ -224,7 +239,6 @@ describe('Test view', () => {
     const { doc, post, label } = boot();
     post({ fresh: true, head: head(), order: ['a'], cases: [kase('a')], runs: { a: done('a', 'AC') } });
     label('Show this case').click();
-    doc.querySelector('.fold')!.dispatchEvent(new doc.defaultView!.MouseEvent('click', { bubbles: true }));
     const box = doc.querySelector('textarea')!;
     box.focus();
     post({ head: head(), cases: [kase('a', { source: 'custom', input: text('9\n') })], runs: { a: null } });

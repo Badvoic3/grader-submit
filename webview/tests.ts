@@ -222,7 +222,8 @@ function fold(label: string, open: boolean, toggle: () => void, ...after: Child[
 
 function body(c: TestCaseView, r: CaseRun | undefined): HTMLElement {
   const done = r?.state === 'done';
-  const inOpen = inputOpen.get(c.id) ?? !done;
+  // The input shows on every case, passed or failed (user, 2026-11-15); its fold still closes it by hand.
+  const inOpen = inputOpen.get(c.id) ?? true;
   const editExpected = !done || editingExpected.has(c.id);
   const actual: Captured | undefined = r?.actual;
   const copy = (what: 'input' | 'expected' | 'actual' | 'stderr', label: string) => iconButton('copy', label, () => send({ type: 'copy', caseId: c.id, what }));
