@@ -44,6 +44,7 @@ import { cleanName, placeholder, resolveProblem } from './mapping/match';
 import { MappingStore } from './mapping/store';
 import { matchNote, type MatchInfo, NO_MATCH_INFO } from './mapping/linkActions';
 import { nameMatchesProblem, renameProposal } from './mapping/renameToProblem';
+import { penaltyNote, problemView, submitGate } from './flows/viewState';
 import { noteRecent, rememberNewest } from './shared/lru';
 import { CELEBRATE, DEFAULT_BASE_URL, LIMITS, SUBMISSION_SCHEME, TIMING, troubleshootingUrl, userGuideUrl, WEB_PATHS } from './shared/constants';
 import { MATCH_SOURCE, S, W } from './shared/strings';
@@ -820,19 +821,7 @@ export class GraderController implements vscode.Disposable {
   // ---------------------------------------------------------------- state
 
   private problemView(p: Problem, opened = this.ctx.workspaceState.get<Record<string, number>>(KEYS.recentlyOpened, {})): ProblemView {
-    return {
-      id: p.id,
-      name: cleanName(p.name),
-      fullName: cleanName(p.fullName),
-      score: summarize(p),
-      hasFile: this.links.mappedIds.has(p.id),
-      hasTestcase: p.hasTestcase,
-      hasAttachment: p.hasAttachment,
-      status: problemStatus(p),
-      tags: p.tags ?? [],
-      lastSubmissionTime: p.lastSubmissionTime,
-      lastOpened: opened[p.id] ?? null,
-    };
+    return problemView(p, this.links.mappedIds, opened);
   }
 
   state(): ViewState {
@@ -847,16 +836,7 @@ export class GraderController implements vscode.Disposable {
 
     const unavailable = !!problem && this.unavailableIds.has(problem.id);
     const mismatch = problem && !unavailable ? this.languageMismatch(problem) : null;
-    let reason: string | null = null;
-    if (busy) reason = null;
-    else if (!file) reason = S.submit.openToSubmit;
-    else if (!loggedIn && !this.hasSavedPassword) reason = S.submit.logInFirst;
-    else if (!problem) reason = S.submit.chooseProblemForFile;
-    else if (unavailable) reason = S.submit.unavailable;
-    else if (mismatch) reason = S.submit.notAccepted(mismatch.wanted);
-    else if (this.languagesError) reason = this.languagesError;
-
-    const enabled = !busy && !!file && !!problem && (loggedIn || this.hasSavedPassword) && !mismatch && !unavailable;
+    const { enabled, reason } = submitGate({ busy, hasFile: !!file, loggedIn, hasSavedPassword: this.hasSavedPassword, hasProblem: !!problem, unavailable, mismatch, languagesError: this.languagesError });
     const pState = this.data.state('problems');
     const list = this.data.problemList();
 
@@ -923,12 +903,7 @@ export class GraderController implements vscode.Disposable {
         topics: this.topics(list),
         tags: otherTags(list?.problems ?? [], this.topics(list), this.problemFilter().tags ?? []),
         topicClickOrder: this.cfg.topicClickOrder,
-        penaltyNote:
-          !list || list.listStatus === 'loaded'
-            ? null
-            : list.listStatus === 'no-web-session'
-              ? S.penaltyNote.noWebSession
-              : S.penaltyNote.unreadable,
+        penaltyNote: penaltyNote(list),
       },
     };
   }
