@@ -63,6 +63,11 @@ let viewer: PDFViewer | null = null;
 let eventBus: EventBus | null = null;
 let linkService: PDFLinkService | null = null;
 let workerReady: Promise<void> | null = null;
+/** Bumped by every statement shown: a PDF that finishes loading after a newer one is dropped. */
+let loadSeq = 0;
+/** The document in the viewer, destroyed when another replaces it, and the problem it belongs to. */
+let pdfDoc: { destroy(): Promise<void> } | null = null;
+let shownProblem: number | null = null;
 /** View to restore once pages are laid out (after reopen / restart). */
 let restoreView: StatementViewState | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -77,7 +82,8 @@ function saveView(): void {
 function saveViewNow(): void {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = null;
-  if (!viewer || !persisted) return;
+  // While another problem's PDF loads, the viewer still shows the old one: its scroll is not the new view.
+  if (!viewer || !persisted || shownProblem !== persisted.problemId) return;
   const v: StatementViewState = {
     page: viewer.currentPageNumber,
     scale: String(viewer.currentScaleValue),
@@ -93,9 +99,13 @@ function saveViewNow(): void {
 function startWorker(): Promise<void> {
   workerReady ??= (async () => {
     const res = await fetch(body.dataset.worker!);
+    if (!res.ok) throw new Error(`pdf.js worker: HTTP ${res.status}`);
     const url = URL.createObjectURL(new Blob([await res.text()], { type: 'text/javascript' }));
     pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(url, { type: 'module' });
-  })();
+  })().catch((err) => {
+    workerReady = null; // the next statement tries again
+    throw err;
+  });
   return workerReady;
 }
 
@@ -135,7 +145,8 @@ function showMatches(c: { current: number; total: number }): void {
   matches.textContent = c.total ? W.matchOf(c.current, c.total) : search.value ? W.noMatches : '';
 }
 
-async function showPdf(data: Uint8Array): Promise<void> {
+async function showPdf(data: Uint8Array, problemId: number): Promise<void> {
+  const seq = ++loadSeq;
   await startWorker();
   const v = setupViewer();
   const doc = await pdfjsLib.getDocument({
@@ -143,7 +154,15 @@ async function showPdf(data: Uint8Array): Promise<void> {
     standardFontDataUrl: body.dataset.fonts,
     isEvalSupported: false, // strict CSP: no eval
   }).promise;
+  if (seq !== loadSeq) {
+    void doc.destroy(); // a newer statement came meanwhile
+    return;
+  }
+  const old = pdfDoc;
+  pdfDoc = doc;
+  shownProblem = problemId;
   v.setDocument(doc);
+  void old?.destroy();
   linkService!.setDocument(doc, null);
   pageCount.textContent = `/ ${doc.numPages}`;
   pageInput.max = String(doc.numPages);
@@ -228,13 +247,14 @@ window.addEventListener('message', (ev: MessageEvent<ToStatement>) => {
   vscode.setState(persisted);
   status.textContent = '';
   status.classList.remove('error');
+  if (m.type !== 'pdf') loadSeq++; // a PDF still loading must not replace this
   if (m.type === 'loading') {
     mode('loading');
     status.textContent = W.loadingStatement;
   } else if (m.type === 'pdf') {
     mode('pdf');
     restoreView = m.view ?? (persisted && persisted.problemId === m.problemId ? persisted : null);
-    showPdf(m.data).catch((err) => {
+    showPdf(m.data, m.problemId).catch((err) => {
       mode('message');
       status.classList.add('error');
       status.textContent = W.pdfError(err instanceof Error ? err.message : err);
@@ -252,4 +272,4 @@ window.addEventListener('message', (ev: MessageEvent<ToStatement>) => {
 
 send({ type: 'ready' });
 
-window.addEventListener('beforeunload', () => saveView());
+window.addEventListener('beforeunload', () => saveViewNow()); // the debounce would never fire

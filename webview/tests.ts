@@ -108,6 +108,7 @@ function renderTop(h: TestsHead): void {
   list.hidden = h.title === null || !order.length;
   addCase.hidden = h.title === null;
   addCase.disabled = h.running;
+  addCase.dataset.tip = h.running ? W.waitForRun : W.addCaseTip;
   const close = () => iconButton('close', W.closeTests, () => { flushEdits(); send({ type: 'close' }); });
   if (h.title === null) {
     top.append(el('div', { class: 'th' }, el('p', { class: 'muted small grow' }, W.testsNoFile), close()));
@@ -131,10 +132,10 @@ function renderTop(h: TestsHead): void {
         ? button([icon('debug-stop'), ` ${W.stopTests}`], () => send({ type: 'stop' }), { cls: 'run-all', title: W.stopTestsTip })
         : button([icon('play'), ` ${W.runAll}`], () => run(), { kind: 'primary', cls: 'run-all', disabled: empty, title: empty ? W.runAllNoCases : W.runAllTip }),
       load?.testcases
-        ? button(load.testcases.busy ? [icon('loading', 'codicon-modifier-spin'), ` ${W.loadingTestCases}`] : [icon('beaker'), ` ${W.loadTestCases}`], () => send({ type: 'loadTestcases' }), { disabled: load.testcases.busy || h.running, title: load.testcases.busy ? W.downloadingTestCases : W.loadTestCasesTip })
+        ? button(load.testcases.busy ? [icon('loading', 'codicon-modifier-spin'), ` ${W.loadingTestCases}`] : [icon('beaker'), ` ${W.loadTestCases}`], () => send({ type: 'loadTestcases' }), { disabled: load.testcases.busy || h.running, title: load.testcases.busy ? W.downloadingTestCases : h.running ? W.waitForRun : W.loadTestCasesTip })
         : null,
       load?.samples
-        ? button(load.samples.busy ? [icon('loading', 'codicon-modifier-spin'), ` ${W.readingSampleCases}`] : [icon('table'), ` ${W.loadSampleCases}`], () => send({ type: 'loadSamples' }), { disabled: load.samples.busy || h.running, title: load.samples.busy ? W.readingStatementTip : W.loadSampleCasesTip })
+        ? button(load.samples.busy ? [icon('loading', 'codicon-modifier-spin'), ` ${W.readingSampleCases}`] : [icon('table'), ` ${W.loadSampleCases}`], () => send({ type: 'loadSamples' }), { disabled: load.samples.busy || h.running, title: load.samples.busy ? W.readingStatementTip : h.running ? W.waitForRun : W.loadSampleCasesTip })
         : null,
       el('span', { class: 'limit' }, W.testsLimit(h.limits.timeMs / 1000, sizeOf(h.limits.memoryMB), h.limits.source === 'grader')),
     ),
@@ -234,7 +235,11 @@ function body(c: TestCaseView, r: CaseRun | undefined): HTMLElement {
   // A passed case shows its output once: Expected and Actual would say the same (user, 2026-11-15).
   // Editing the expected output brings both back.
   const passed = done && r.verdict === 'AC' && !!actual && !editingExpected.has(c.id);
-  const spaces = !passed && !!actual && [...diff.expected, ...diff.actual].some((l) => l.trail);
+  const editButton = done && !c.expected.truncated && !head?.running
+    ? iconButton('edit', W.editExpected, () => { editingExpected.add(c.id); render(); })
+    : null;
+  // Also on a pass: it explains why outputs that differ at line ends still passed.
+  const spaces = !!actual && [...diff.expected, ...diff.actual].some((l) => l.trail);
   return el('div', { class: 'det' },
     done ? el('div', { class: 'mem-line', title: W.memoryEstimate }, memoryOf(r.memoryKB)) : null,
     code ? el('div', { class: 'limit' }, code) : null,
@@ -242,22 +247,13 @@ function body(c: TestCaseView, r: CaseRun | undefined): HTMLElement {
     inOpen ? editor(c, 'input', W.caseInput) : null,
     passed
       ? el('div', { class: 'out' },
-          el('div', { class: 'blk-h' }, W.caseOutput, el('span', { class: 'sp' }),
-            !c.expected.truncated && !head?.running
-              ? iconButton('edit', W.editExpected, () => { editingExpected.add(c.id); render(); })
-              : null,
-            copy('actual', W.copyOutput),
+          el('div', { class: 'blk-h' }, W.caseOutput, el('span', { class: 'sp' }), editButton, copy('actual', W.copyOutput),
           ),
           block(plainLines(actual.text)),
         )
       : el('div', { class: 'cols' },
         el('div', {},
-          el('div', { class: 'blk-h' }, W.caseExpected, el('span', { class: 'sp' }),
-            done && !c.expected.truncated && !head?.running
-              ? iconButton('edit', W.editExpected, () => { editingExpected.add(c.id); render(); })
-              : null,
-            copy('expected', W.copyExpected),
-          ),
+          el('div', { class: 'blk-h' }, W.caseExpected, el('span', { class: 'sp' }), editButton, copy('expected', W.copyExpected)),
           editExpected ? editor(c, 'expected', W.caseExpected) : block(diff.expected, 'del'),
         ),
         actual ? el('div', {}, el('div', { class: 'blk-h' }, W.caseActual), block(diff.actual, 'add')) : null,
@@ -268,7 +264,7 @@ function body(c: TestCaseView, r: CaseRun | undefined): HTMLElement {
       ? el('div', { class: 'acts' },
           button([icon('diff'), ` ${W.compareInCode}`], () => send({ type: 'compare', caseId: c.id }), { title: W.compareInCodeTip }),
           copy('actual', W.copyActual),
-          iconButton('check-all', W.setExpected, () => send({ type: 'setExpected', caseId: c.id }), { disabledReason: actual.truncated ? W.setExpectedCut : null, disabled: !!head?.running }),
+          iconButton('check-all', W.setExpected, () => send({ type: 'setExpected', caseId: c.id }), { disabledReason: actual.truncated ? W.setExpectedCut : head?.running ? W.waitForRun : null }),
         )
       : null,
     r?.stderr?.text
@@ -335,8 +331,8 @@ function header(c: TestCaseView, r: CaseRun | undefined, n: number): HTMLElement
     el('span', { class: 'badge' }, SOURCE[c.source]()),
     done ? el('span', { class: 'tcm' }, el('span', {}, `${r.timeMs} ms`), el('span', { class: 'mem', title: W.memoryEstimate }, memoryOf(r.memoryKB))) : null,
     el('span', { class: 'sp' }),
-    iconButton('play', W.runCase, () => run(c.id), { cls: 'act-run', disabled: busy }),
-    iconButton('trash', W.deleteCase, () => send({ type: 'remove', caseId: c.id }), { cls: 'act-del', disabled: busy }),
+    iconButton('play', W.runCase, () => run(c.id), { cls: 'act-run', disabledReason: busy ? W.waitForRun : null }),
+    iconButton('trash', W.deleteCase, () => send({ type: 'remove', caseId: c.id }), { cls: 'act-del', disabledReason: busy ? W.waitForRun : null }),
     iconButton(open ? 'chevron-up' : 'chevron-down', open ? W.closeCase : W.openCase, toggle),
   );
 }
@@ -451,7 +447,9 @@ function onState(m: ToTests): void {
   head = m.head;
   order = m.order;
   for (const c of m.cases) cases.set(c.id, c);
-  for (const id of cases.keys()) if (!m.order.includes(id)) cases.delete(id);
+  const inOrder = new Set(m.order);
+  for (const id of cases.keys()) if (!inOrder.has(id)) cases.delete(id);
+  for (const id of runs.keys()) if (!inOrder.has(id)) runs.delete(id); // a deleted case's result goes with it
   for (const [id, r] of Object.entries(m.runs)) {
     if (r) {
       // A new run decides again what is open.

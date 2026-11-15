@@ -114,7 +114,8 @@ export function installTooltips(doc: Document = document, delay: number = PANEL.
     hide,
     refresh(): void {
       if (!anchor || anchor.isConnected) {
-        if (anchor) {
+        if (anchor && !anchor.dataset.tip && !anchor.dataset.tipTitle) hide(); // its tip was taken away: no empty bubble
+        else if (anchor) {
           fill(anchor);
           place(anchor);
         }

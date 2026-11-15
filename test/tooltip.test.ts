@@ -59,6 +59,17 @@ describe('custom tooltip', () => {
     expect(t.element.hidden).toBe(true);
   });
 
+  it('a shown tip whose text was taken away hides instead of showing an empty bubble', () => {
+    const t = installTooltips(document);
+    const a = document.getElementById('a')!;
+    over(a);
+    vi.advanceTimersByTime(300);
+    expect(t.element.hidden).toBe(false);
+    delete a.dataset.tip;
+    t.refresh();
+    expect(t.element.hidden).toBe(true);
+  });
+
   it('elements without data-tip show nothing; the tooltip stays inside the viewport', () => {
     const t = installTooltips(document);
     over(document.getElementById('c')!);

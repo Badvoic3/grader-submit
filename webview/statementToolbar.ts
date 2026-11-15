@@ -1,3 +1,4 @@
+import { W } from '../src/shared/strings';
 /** Statement viewer toolbar (plain DOM; separate so it is tested without pdf.js). */
 
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, ...kids: (Node | string)[]): HTMLElementTagNameMap[K] {
@@ -68,5 +69,4 @@ export function buildToolbar(h: ToolbarHandlers) {
     ),
   );
   return { toolbar, pageInput, pageCount, zoomLabel, search, matches, titleEl };
-}import { W } from '../src/shared/strings';
-
+}

@@ -182,9 +182,14 @@ describe('break tab motion', () => {
     expect(after).toBeLessThan(150);
     frames(3000);
     expect(Math.hypot(lead.x - 300, lead.y - 200)).toBeGreaterThan(after);
-    pointer.inside = true; pointer.x = 500; pointer.y = 400; pointer.at = now; // back: it follows at once
-    frames(100);
-    expect([lead.x, lead.y]).toEqual([500, 400]);
+    pointer.inside = true; pointer.x = 500; pointer.y = 400; pointer.at = now; // back: it glides there, no jump
+    const from = [lead.x, lead.y];
+    frames(1000 / 60);
+    const first = Math.hypot(lead.x - from[0], lead.y - from[1]);
+    expect(first).toBeGreaterThan(0);
+    expect(first).toBeLessThan(Math.hypot(500 - from[0], 400 - from[1]) / 2);
+    frames(1000);
+    expect([lead.x, lead.y]).toEqual([500, 400]); // then locked on
   });
 
   it('the fluid projection removes most of the divergence', () => {

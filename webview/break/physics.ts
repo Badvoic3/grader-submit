@@ -411,6 +411,9 @@ export function pointerAway(q: { seen: boolean; inside: boolean; down: boolean; 
   const px = q.x + (q.vx ?? 0) * flingMs, py = q.y + (q.vy ?? 0) * flingMs;
   return px < 0 || py < 0 || px > q.W || py > q.H;
 }
+/** The lead's springs: back to a returning pointer (about 0.3 s) and to the wander; within `catchPx` it locks on. */
+export const SWARM_LEAD = { backK: 120, wanderK: 6, catchPx: 2 } as const;
+
 /** `fling*`: moves that stop for `flingIdleMs` while the speed (px/ms) would have taken the pointer out within `flingMs`. */
 export const SWARM_AWAY = { edgePx: 28, edgeIdleMs: 250, flingIdleMs: 120, flingMs: 150 } as const;
 
@@ -438,10 +441,19 @@ export class SwarmLead {
       y: H * 0.47 + H * 0.26 * Math.sin(t * 0.00041 + 1.7 + 1.1 * Math.cos(t * 0.00013)),
     };
   }
+  /** On the pointer: it moves with it exactly. Off it (away, or gliding back), a spring carries it. */
+  private locked = false;
   step(dtMs: number, t: number, pointer: PointerState, now: number): void {
-    if (!pointerAway({ ...pointer, idleMs: now - pointer.at, W: this.W, H: this.H })) { this.x = pointer.x; this.y = pointer.y; this.vx = 0; this.vy = 0; return; }
-    const w = this.wander(t), s = dtMs / 1000, k = 6, c = 2 * Math.sqrt(k) * 0.9;
-    this.vx += ((w.x - this.x) * k - this.vx * c) * s; this.vy += ((w.y - this.y) * k - this.vy * c) * s;
+    const here = !pointerAway({ ...pointer, idleMs: now - pointer.at, W: this.W, H: this.H });
+    if (!here) this.locked = false;
+    if (here && (this.locked || Math.hypot(pointer.x - this.x, pointer.y - this.y) < SWARM_LEAD.catchPx)) {
+      this.locked = true;
+      this.x = pointer.x; this.y = pointer.y; this.vx = 0; this.vy = 0;
+      return;
+    }
+    // Back to a returning pointer quickly but without a jump (a jump flings the swarm); to the wander slowly.
+    const to = here ? pointer : this.wander(t), s = Math.min(dtMs, 50) / 1000, k = here ? SWARM_LEAD.backK : SWARM_LEAD.wanderK, c = 2 * Math.sqrt(k) * 0.9;
+    this.vx += ((to.x - this.x) * k - this.vx * c) * s; this.vy += ((to.y - this.y) * k - this.vy * c) * s;
     this.x += this.vx * s; this.y += this.vy * s;
   }
 }

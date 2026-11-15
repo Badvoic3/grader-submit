@@ -17,7 +17,7 @@ import type { Strings } from './strings';
  * Everything else was reviewed at checkpoint B (2026-11-03). Add keys here
  * when a new text is translated without review.
  */
-export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled'];
+export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun'];
 
 export const TH: Strings = {
   HOW_LINKED: {
@@ -627,6 +627,7 @@ export const TH: Strings = {
     runTestsTip: 'รัน test case บนเครื่องของคุณ',
     stopTests: 'หยุด',
     stopTestsTip: 'หยุดการรัน',
+    waitForRun: 'รอให้การรันเสร็จก่อน',
     openTests: 'เปิดหน้าทดสอบ',
     openTestsTip: 'เปิด test case ข้างโค้ด',
     closeTests: 'ปิดหน้าทดสอบ',

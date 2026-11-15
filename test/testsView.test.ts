@@ -92,7 +92,7 @@ describe('Test view', () => {
     button('Stop')!.click();
     expect(sent.at(-1)).toEqual({ type: 'stop' });
     expect(button('Add case')!.disabled).toBe(true);
-    expect(label('Delete this case').disabled).toBe(true);
+    expect(label('Delete this case (Wait for the run to finish)').disabled).toBe(true);
     expect(doc.querySelector('.card.running .vp.running')).not.toBeNull();
     expect(doc.querySelector('.tc')!.getAttribute('draggable')).toBeNull();
   });
@@ -175,6 +175,28 @@ describe('Test view', () => {
     expect(card.querySelector('.out')).toBeNull();
     expect(card.querySelector<HTMLTextAreaElement>('textarea[aria-label="Expected"]')!.value).toBe('3\n');
     expect(card.textContent).toContain('Actual');
+  });
+
+  it('during a run, the disabled buttons say why', () => {
+    const { doc, post, label } = boot();
+    post({ fresh: true, head: head({ running: true }), order: ['a'], cases: [kase('a')], runs: { a: done('a', 'WA') } });
+    for (const name of ['Run this case', 'Delete this case', 'Set Actual as Expected']) {
+      const b = label(`${name} (Wait for the run to finish)`);
+      expect(b, name).not.toBeNull();
+      expect(b.disabled).toBe(true);
+    }
+    const load = [...doc.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Load test cases'))!;
+    expect(load.disabled).toBe(true);
+    expect(load.dataset.tip).toBe('Wait for the run to finish');
+    expect(doc.querySelector<HTMLButtonElement>('.add-case')!.dataset.tip).toBe('Wait for the run to finish');
+  });
+
+  it('a case that passed with different spaces at line ends says why', () => {
+    const { doc, post, label } = boot();
+    post({ fresh: true, head: head(), order: ['a'], cases: [kase('a')], runs: { a: done('a', 'AC', { actual: text('3  \n') }) } });
+    label('Show this case').click();
+    expect(doc.querySelector('.out')).not.toBeNull();
+    expect(doc.body.textContent).toContain("Spaces at line ends don't count.");
   });
 
   it('only the first failed case opens by itself', () => {

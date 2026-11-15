@@ -55,10 +55,6 @@ window.addEventListener('unhandledrejection', (e) => {
 
 // ------------------------------------------------------------------ helpers
 
-/**
- * Icon-only button: always a tooltip (`title`) and the same `aria-label`.
- * When disabled, the tooltip says why.
- */
 /** "How to use": the user guide on GitHub (logged-out Account section). */
 function howToUseLink(): HTMLButtonElement {
   return el('button', { class: 'link small', type: 'button', title: W.howToUseTip, onclick: () => send({ type: 'openUserGuide' }) }, icon('book'), ' ', W.howToUse);
@@ -163,12 +159,14 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     closeContextMenu(true);
   } else if (e.key === 'Tab') {
-    closeContextMenu();
+    closeContextMenu(true); // back on the opener first, so Tab moves on from there instead of from <body>
   } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault();
     const items = [...ctxMenu.querySelectorAll<HTMLButtonElement>('.menu-item:not([disabled])')];
     const i = items.indexOf(document.activeElement as HTMLButtonElement);
-    items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+    // Nothing focused yet: Down goes to the first item, Up to the last.
+    const next = i < 0 ? (e.key === 'ArrowDown' ? 0 : items.length - 1) : (i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
+    items[next]?.focus();
   }
 });
 window.addEventListener('blur', () => closeContextMenu());
@@ -359,11 +357,14 @@ const problemSearch = el('div', { class: 'search-box' }, icon('search'), problem
 const sAccount = section('account', W.sectionAccount);
 const sCurrent = section('current', W.sectionCurrent);
 const sResult = section('result', W.sectionResult);
+// Built once, in the header: renderHistory keeps its aria-expanded in step with the legend.
+const historyHelp = iconButton('question', W.readingTheResults, () => {
+  legendOpen = legendOpen === 'history' ? null : 'history';
+  forceRender();
+});
+historyHelp.setAttribute('aria-expanded', 'false');
 const sHistory = section('history', W.sectionHistory, [
-  iconButton('question', W.readingTheResults, () => {
-    legendOpen = legendOpen === 'history' ? null : 'history';
-    forceRender();
-  }),
+  historyHelp,
   iconButton('refresh', W.refreshHistory, () => send({ type: 'refreshHistory' })),
 ]);
 const sTrophies = section('trophies', W.sectionTrophies, [], true);
@@ -512,9 +513,11 @@ function openPicker(): void {
   pickerSearch.focus();
 }
 
-function closePicker(): void {
+function closePicker(refocus = false): void {
   pickerOpen = false;
   render();
+  // The search box is gone: the keyboard goes back to the button that opened the list.
+  if (refocus) (sCurrent.body.querySelector<HTMLElement>('.combo') ?? sCurrent.body.querySelector<HTMLElement>('button'))?.focus();
 }
 
 function renderPickerList(s: ViewState): void {
@@ -826,8 +829,6 @@ function renderResult(s: ViewState): void {
   if (r.phase === 'timeout' || r.phase === 'error') {
     b.append(el('div', { class: r.phase === 'error' ? 'error' : 'notice' }, icon(r.phase === 'error' ? 'error' : 'clock'), ' ', r.message ?? ''));
   }
-  if (r.phase !== 'submitting' && r.phase !== 'grading') {
-  }
 }
 
 // -------------------------------------------------------------- celebration and trophies
@@ -1060,10 +1061,11 @@ function renderHistory(s: ViewState): void {
     return;
   }
   const H = s.history;
+  historyHelp.setAttribute('aria-expanded', String(legendOpen === 'history'));
   if (legendOpen === 'history') b.append(legend());
   if (H.stale) b.append(el('p', { class: 'hint' }, icon('warning'), ' ', W.mayBeOutOfDate));
   if (!H.items.length) {
-    b.append(el('p', { class: 'muted' }, H.loading ? W.loading : H.error ? '' : W.noSubmissions));
+    if (H.loading || !H.error) b.append(el('p', { class: 'muted' }, H.loading ? W.loading : W.noSubmissions)); // an error says it below
   } else {
     const list = el('div', { class: 'history' });
     for (const h of H.items) list.append(historyRow(h, s));
@@ -1502,8 +1504,11 @@ function sectionKeys(s: ViewState): Record<string, string> {
     result: j([s.result, s.celebrate ?? null, legendOpen === 'result', s.problem?.score.rawSum]),
     trophies: j(s.trophies ?? null),
     history: j([pid, s.history, legendOpen === 'history', s.problem?.score.rawSum]),
-    problems: j([{ ...s.problems, items: s.problems.items.length }, problemHits(s).length, ui.filter, s.attachment]),
+    problems: problemsKey(s),
   };
+}
+function problemsKey(s: ViewState): string {
+  return JSON.stringify([{ ...s.problems, items: s.problems.items.length }, problemHits(s).length, ui.filter, s.attachment]);
 }
 
 /** Panel layout settings: which sections, in which order, and compact mode. */
@@ -1577,8 +1582,8 @@ function forceRender(): void {
 pickerSearch.addEventListener('input', () => state && renderPickerList(state));
 pickerSearch.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    pickerOpen = false;
-    render();
+    pickerSearch.value = ''; // Escape cancels the search too
+    closePicker(true);
   } else if (e.key === 'Enter') {
     pickerList.querySelector<HTMLButtonElement>('.problem-main:not([disabled])')?.click();
   }
@@ -1588,6 +1593,7 @@ problemFilter.addEventListener('input', () => {
   saveUi();
   if (state) {
     renderProblems(state);
+    lastKeys.set('problems', problemsKey(state)); // drawn now: the next push needn't draw it again
     problemList.scrollTop = 0; // new search: start at the top of the results
     problemFilter.focus();
   }

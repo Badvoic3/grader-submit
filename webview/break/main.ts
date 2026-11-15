@@ -291,10 +291,11 @@ function sandScene(): Scene {
       for (let n = 0; acc >= 1000 / 60 && n < 4; n++) { acc -= 1000 / 60; grid.tick(t, pointer, pointer.moved); pointer.moved = false; }
       let moving = grid.busy;
       const k = 1 - Math.pow(0.001, dt / 120);
+      const heldAt = new Map(grid.held.map((g, n) => [g, n])); // once per frame, not a search per grain
       chars.forEach((p, i) => {
         const cell = grid.cellOf[i];
         let tx: number, ty: number;
-        if (cell.state === 'held') { const a = t * 0.004 + i, r = 4 + Math.sqrt(grid.held.indexOf(i) + 1) * 3.2; tx = pointer.x + Math.cos(a) * r - cw / 2; ty = pointer.y + Math.sin(a) * r * 0.7 - lh / 2; }
+        if (cell.state === 'held') { const a = t * 0.004 + i, r = 4 + Math.sqrt((heldAt.get(i) ?? 0) + 1) * 3.2; tx = pointer.x + Math.cos(a) * r - cw / 2; ty = pointer.y + Math.sin(a) * r * 0.7 - lh / 2; }
         else if (cell.c < 0) return;
         else if (cell.state === 'wait') return; // still where the editor draws it (off the grid when the text isn't plain)
         else { tx = ox + cell.c * cw; ty = oy + cell.r * lh; }
@@ -528,7 +529,6 @@ cv.addEventListener('pointermove', (e) => {
 });
 cv.addEventListener('pointerleave', () => { if (!pointer.down) pointer.inside = false; });
 document.documentElement.addEventListener('mouseleave', () => { if (!pointer.down) pointer.inside = false; });
-addEventListener('blur', () => { if (!pointer.down) pointer.inside = false; });
 cv.addEventListener('pointerdown', (e) => {
   pointer.down = true; pointer.x = e.clientX; pointer.y = e.clientY; pointer.vx = 0; pointer.vy = 0; pointer.seen = true; pointer.inside = true; pointer.at = performance.now();
   if (phase === 'run') S?.press?.();

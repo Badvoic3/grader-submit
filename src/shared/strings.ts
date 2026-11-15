@@ -636,6 +636,7 @@ const EN_W = {
   runTestsTip: 'Run the test cases on your computer',
   stopTests: 'Stop',
   stopTestsTip: 'Stop the run',
+  waitForRun: 'Wait for the run to finish',
   openTests: 'Open tests',
   openTestsTip: 'Open the test cases beside the code',
   closeTests: 'Close tests',

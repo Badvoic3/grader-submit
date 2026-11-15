@@ -1423,6 +1423,44 @@ describe.runIf(existsSync(resolve(__dirname, '../esbuild.mjs')))('sidebar webvie
     expect(doc.querySelector('.context-menu')).toBeNull();
   });
 
+  it('menu keys: Up with nothing focused goes to the last item; Tab closes the menu and keeps the keyboard on the row', () => {
+    const { dom, doc, post } = boot();
+    const W = dom.window as unknown as typeof globalThis;
+    post(loggedIn);
+    const opener = row(doc, 1).querySelector<HTMLButtonElement>('button')!;
+    opener.focus();
+    rightClick(doc, opener);
+    const items = [...doc.querySelectorAll<HTMLElement>('.context-menu .menu-item:not([disabled])')];
+    (doc.activeElement as HTMLElement | null)?.blur();
+    doc.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowUp' }));
+    expect(doc.activeElement).toBe(items.at(-1));
+    doc.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(doc.querySelector('.context-menu')).toBeNull();
+    expect(doc.activeElement).toBe(opener);
+  });
+
+  it('Escape in the problem picker closes it, clears the search and gives the keyboard back to the button', () => {
+    const { dom, doc, post } = boot();
+    const W = dom.window as unknown as typeof globalThis;
+    post(loggedIn);
+    doc.querySelector<HTMLButtonElement>('#sec-current .combo')!.click();
+    const search = doc.querySelector<HTMLInputElement>('.picker-search')!;
+    search.value = 'lab3';
+    search.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(doc.querySelector('#sec-current .picker-search')).toBeNull();
+    expect(doc.activeElement).toBe(doc.querySelector('#sec-current .combo'));
+    expect(search.value).toBe('');
+  });
+
+  it('the History "?" says whether the legend is open', () => {
+    const { doc, post } = boot();
+    post(loggedIn);
+    const help = doc.querySelector<HTMLButtonElement>('#sec-history [aria-label="Reading the results"]')!;
+    expect(help.getAttribute('aria-expanded')).toBe('false');
+    help.click();
+    expect(help.getAttribute('aria-expanded')).toBe('true');
+  });
+
   it('History tile tooltips (collapsed strip and expanded details) through the custom tooltip', async () => {
     const { dom, doc, post } = boot();
     const verdicts = [
