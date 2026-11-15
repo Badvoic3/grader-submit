@@ -69,7 +69,8 @@ export class DataService {
   private visible = false;
   private focused: number | null = null;
   private timer: unknown = null;
-  private pendingProblems = false;
+  /** A list load waiting for the panel: the full one, or the API-only one after a submit (penalties don't change). */
+  private pendingProblems: false | 'full' | 'apiOnly' = false;
   private readonly states = new Map<string, LoadState>();
   private readonly downloads = new Map<number, ReturnType<GraderProvider['getAttachment']>>();
   private readonly limitsCache = new Map<number, Promise<ProblemLimits | null>>();
@@ -144,7 +145,8 @@ export class DataService {
     this.visible = v;
     this.log(`panel ${v ? 'visible' : 'hidden'}`);
     if (!v) return;
-    if (this.pendingProblems) void this.loadProblems(true);
+    if (this.pendingProblems === 'apiOnly') void this.refreshAfterSubmit();
+    else if (this.pendingProblems) void this.loadProblems(true);
     if (this.focused !== null && !this.cache.isFresh(historyKey(this.focused), HISTORY)) void this.loadHistory(this.focused);
   }
 
@@ -169,7 +171,7 @@ export class DataService {
   /** Problem list (+ /main/list penalties). Deferred while the panel is hidden. */
   async loadProblems(force = false): Promise<ProblemList | undefined> {
     if (!this.visible) {
-      this.pendingProblems = true;
+      this.pendingProblems = 'full';
       this.log('problems: deferred (panel hidden)');
       return this.problemList();
     }
@@ -219,18 +221,21 @@ export class DataService {
     this.cache.invalidate(historyKey(problemId));
     this.cache.invalidate('problems');
     if (!this.visible) {
-      this.pendingProblems = true;
+      if (this.pendingProblems !== 'full') this.pendingProblems = 'apiOnly';
       return;
     }
+    await Promise.all([this.loadHistory(problemId, true), this.refreshAfterSubmit()]);
+  }
+
+  /** The problem list from the API only, keeping the list page's data (penalties don't change by submitting). */
+  private async refreshAfterSubmit(): Promise<void> {
+    this.pendingProblems = false;
     const prevList = this.problemList();
     const previous = prevList?.problems;
     const gen = this.cache.generation;
-    await Promise.all([
-      this.loadHistory(problemId, true),
-      this.run('problems', () =>
-        this.cache.get('problems', SESSION, () => this.opts.client().listProblems({ penalties: false, previous, previousTopics: prevList?.topics ?? null }), true),
-      ),
-    ]);
+    await this.run('problems', () =>
+      this.cache.get('problems', SESSION, () => this.opts.client().listProblems({ penalties: false, previous, previousTopics: prevList?.topics ?? null }), true),
+    );
     if (gen === this.cache.generation) this.savePersisted();
   }
 

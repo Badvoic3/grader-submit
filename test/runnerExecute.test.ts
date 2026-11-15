@@ -315,6 +315,13 @@ describe('runCases', () => {
     expect(q.calls).toHaveLength(2);
   });
 
+  it('Stop during a fresh program\'s first case doesn\'t run it again', async () => {
+    const ac = new AbortController();
+    const p = new FakeProcessApi(() => later(() => ac.abort()));
+    await run(p, { fresh: true, signal: ac.signal });
+    expect(p.calls).toHaveLength(1);
+  });
+
   it('a TLE on the first case after compiling gets one more try; later ones do not', async () => {
     const tiny = { ...limits, timeMs: 1 };
     const slow = (c: FakeCall) => setTimeout(() => c.child.finish(0), 20);

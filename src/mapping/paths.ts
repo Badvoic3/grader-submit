@@ -45,8 +45,9 @@ export function remapPath(p: string, oldPath: string, newPath: string, caseInsen
   const pk = pathKey(p, caseInsensitive);
   const ok = pathKey(oldPath, caseInsensitive);
   if (pk === ok) return newPath;
-  const prefix = ok.endsWith('/') || ok.endsWith('\\') ? ok : ok + (ok.includes('\\') && !ok.includes('/') ? '\\' : '/');
-  if (!pk.startsWith(prefix)) return null;
+  // A Windows drive root (`D:\`) comes out of pathKey as `d:`, with no separator to say which kind.
+  const prefixes = /^[a-z]:$/i.test(ok) ? [ok + '\\', ok + '/'] : [ok.endsWith('/') || ok.endsWith('\\') ? ok : ok + (ok.includes('\\') && !ok.includes('/') ? '\\' : '/')];
+  if (!prefixes.some((prefix) => pk.startsWith(prefix))) return null;
   // Keep the original spelling of the part below the moved folder.
   const np = normalizeAbsPath(p);
   const depth = normalizeAbsPath(oldPath).split(sepRe).length;

@@ -133,7 +133,7 @@ export class ApiClient {
   /** One anonymous GET, no retry, with the same redirect lock and timeout as every other request. */
   async probe(path: string): Promise<{ status: number; contentType: string; text: string }> {
     const res = await this.raw('GET', path, undefined, false, undefined, true);
-    const text = new TextDecoder().decode(await readCapped(res, PROBE_MAX_BYTES));
+    const text = new TextDecoder().decode(await this.body(() => readCapped(res, PROBE_MAX_BYTES)));
     return { status: res.status, contentType: res.headers.get('content-type') ?? '', text };
   }
 
@@ -149,9 +149,14 @@ export class ApiClient {
           res.status,
         );
       }
-      const retryAfter = Number(res.headers.get('retry-after'));
-      await this.sleep(Math.min(TIMING.retryAfterCapMs, retryAfter > 0 ? retryAfter * 1000 : TIMING.retryBaseMs * 2 ** attempt), signal);
+      await this.sleep(this.retryDelay(res, attempt), signal);
     }
+  }
+
+  /** Back-off before the next try: the server's Retry-After (capped), else 2 s, 4 s, … */
+  private retryDelay(res: Response, attempt: number): number {
+    const retryAfter = Number(res.headers.get('retry-after'));
+    return Math.min(TIMING.retryAfterCapMs, retryAfter > 0 ? retryAfter * 1000 : TIMING.retryBaseMs * 2 ** attempt);
   }
 
   async post<T>(path: string, body: unknown): Promise<T> {
@@ -176,7 +181,7 @@ export class ApiClient {
           await res.body?.cancel().catch(() => {});
           throw new GraderError(G.downloadTooLarge(Math.ceil(maxBytes / 1048576)));
         }
-        const bytes = await readCapped(res, maxBytes);
+        const bytes = await this.body(() => readCapped(res, maxBytes));
         return { status: 200, bytes, contentType: res.headers.get('content-type'), disposition: res.headers.get('content-disposition') };
       }
       if (res.status === 403 || res.status === 404) {
@@ -187,7 +192,7 @@ export class ApiClient {
       if (res.status !== 429 && res.status < 500) throw new GraderError(G.httpRefused(res.status));
       await res.body?.cancel().catch(() => {});
       if (attempt >= GET_RETRIES) throw new ServerBusyError(G.httpError(res.status), res.status);
-      await this.sleep(TIMING.retryBaseMs * 2 ** attempt);
+      await this.sleep(this.retryDelay(res, attempt));
     }
   }
 
@@ -201,7 +206,7 @@ export class ApiClient {
       if (res.ok) {
         const size = Number(res.headers.get('x-testcase-byte-size'));
         return {
-          text: await res.text(),
+          text: await this.body(() => res.text()),
           truncated: (res.headers.get('x-testcase-truncated') ?? '').toLowerCase() === 'true',
           byteSize: Number.isFinite(size) && size > 0 ? size : null,
         };
@@ -209,14 +214,14 @@ export class ApiClient {
       if (res.status !== 429 && res.status < 500) return this.handle(res, path);
       await res.body?.cancel().catch(() => {});
       if (attempt >= GET_RETRIES) throw new ServerBusyError(G.httpError(res.status), res.status);
-      await this.sleep(TIMING.retryBaseMs * 2 ** attempt);
+      await this.sleep(this.retryDelay(res, attempt));
     }
   }
 
   /** Create a submission; maps 403/422 to readable errors. */
   async createSubmission(problemId: number, languageId: number, source: string, filename: string): Promise<ApiCreatedSubmission> {
     const res = await this.raw('POST', `/api/v1/problems/${problemId}/submissions`, { language_id: languageId, source, filename }, true);
-    if (res.status === 201 || res.ok) return (await this.json(res)) as ApiCreatedSubmission;
+    if (res.ok) return (await this.json(res)) as ApiCreatedSubmission;
     const body = (await this.json(res)) as { error?: string; errors?: string[]; permitted_languages?: { id: number; name: string }[] };
     if (res.status === 401) throw new SessionExpiredError(G.loginExpiredShort, true);
     if (res.status === 422 && body.permitted_languages) {
@@ -242,8 +247,18 @@ export class ApiClient {
     throw new GraderError(G.refused(msg));
   }
 
+  /** Reading a body can fail after the headers arrived (timeout, reset): that is a connection problem too. */
+  private async body<T>(read: () => Promise<T>): Promise<T> {
+    try {
+      return await read();
+    } catch (err) {
+      if (err instanceof GraderError) throw err;
+      throw networkErrorFrom(err, new URL(this.baseUrl).host);
+    }
+  }
+
   private async json(res: Response): Promise<unknown> {
-    const text = await res.text();
+    const text = await this.body(() => res.text());
     if (!text) return null;
     try {
       return JSON.parse(text);

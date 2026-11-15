@@ -302,7 +302,7 @@ export async function runCases(o: RunCasesInput): Promise<{ noexec: boolean }> {
       if (o.platform !== 'win32' && r.exitCode === 126 && !r.fullStdout) return { noexec: true };
       // The system checks a new program on its first run (about 300 ms on macOS, antivirus on Windows), and
       // that lands in the case's time. So the first case runs again, unless it is too slow for that to matter.
-      if (first && (r.timeMs < RUNNER.freshRerunMs || verdictOf(r, o.limits, c.expected) === 'TLE')) r = await once();
+      if (first && !o.signal?.aborted && (r.timeMs < RUNNER.freshRerunMs || verdictOf(r, o.limits, c.expected) === 'TLE')) r = await once();
       first = false;
       const verdict = verdictOf(r, o.limits, c.expected);
       if (!verdict) {

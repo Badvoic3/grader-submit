@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { CancelledError } from '../grader/errors';
 import type { GraderProvider } from '../grader/provider';
+import { G } from '../shared/strings';
 import type { GraderCase } from '../mapping/testCases';
 import { touch, writeAtomic } from './cacheFiles';
 
@@ -44,6 +46,7 @@ export class TestcaseStore {
     if (!opts.refresh) {
       try {
         const set = JSON.parse(await readFile(this.file(problemId), 'utf8')) as TestcaseSet;
+        if (!Array.isArray(set?.cases) || !Array.isArray(set.truncated)) throw new Error('not a test case set'); // a miss, never a crash
         await touch(this.file(problemId)); // least recently used goes first when the cache is full
         this.log(`cache hit  testcases:${problemId} (disk)`);
         return { status: 'ok', set, fromCache: true };
@@ -60,7 +63,7 @@ export class TestcaseStore {
     let done = 0;
     opts.onProgress?.(0, sorted.length);
     for (const t of sorted) {
-      if (opts.signal?.aborted) throw new Error('Cancelled.');
+      if (opts.signal?.aborted) throw new CancelledError(G.cancelled);
       const input = await c.getTestcaseFile(t.id, 'input');
       // No need to fetch the answer of a case we cannot use.
       const sol = input.truncated ? null : await c.getTestcaseFile(t.id, 'sol');

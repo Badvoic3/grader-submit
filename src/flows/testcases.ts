@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { type Pdfjs, readSampleTables, SampleReadLimitError } from '../data/pdfSamples';
 import type { SampleTable } from '../data/sampleTables';
 import { stripGraderKey, TestcaseStore } from '../data/testcaseStore';
-import { classifyConnectionError, type Problem } from '../grader';
+import { CancelledError, classifyConnectionError, type Problem } from '../grader';
 import { problemSubtitle } from '../mapping/match';
 import { sampleCasesToImport } from '../mapping/sampleImport';
 import type { GraderCase } from '../mapping/testCases';
@@ -102,6 +102,7 @@ export class TestCases {
       const pick = await this.intoList(problem, cases, 'grader', (added, kept) => S.testcases.loaded(added, kept, total - set.cases.length) + keyNote, extra);
       if (pick === refetch) await this.loadTestcases(true);
     } catch (err) {
+      if (err instanceof CancelledError) return; // the user pressed Cancel: nothing to say
       if (classifyConnectionError(err)) h.reportError(err, () => this.loadTestcases(refresh));
       else void vscode.window.showErrorMessage(S.testcases.failed(h.describe(err)));
     } finally {

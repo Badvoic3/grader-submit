@@ -17,7 +17,7 @@ import type { Strings } from './strings';
  * Everything else was reviewed at checkpoint B (2026-11-03). Add keys here
  * when a new text is translated without review.
  */
-export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput'];
+export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled'];
 
 export const TH: Strings = {
   HOW_LINKED: {
@@ -759,6 +759,11 @@ export const TH: Strings = {
     logInFirst: 'เข้าสู่ระบบ Grader ก่อน',
     loginExpired: 'การเข้าสู่ระบบ Grader หมดอายุแล้ว โปรดเข้าสู่ระบบใหม่',
     noWebSession: 'ยังไม่ได้เข้าสู่ระบบเว็บ Grader โปรดเข้าสู่ระบบใหม่',
+    webSessionExpired: 'การเข้าสู่ระบบเว็บ Grader หมดอายุแล้ว',
+    webLoginFormMissing: 'ไม่พบฟอร์มเข้าสู่ระบบบนเว็บ Grader',
+    webAgreement: 'เว็บ Grader ขอให้ยอมรับข้อตกลงก่อน โปรดเข้าสู่ระบบที่เว็บหนึ่งครั้ง',
+    webLoginFailed: (alert) => (alert ? `เข้าสู่ระบบเว็บ Grader ไม่สำเร็จ: ${alert}` : 'เข้าสู่ระบบเว็บ Grader ไม่สำเร็จ'),
+    cancelled: 'ยกเลิกแล้ว',
     fileEmpty: 'ไฟล์ว่างเปล่า เขียนโค้ดคำตอบก่อนส่ง',
     pollTimeout: 'ผ่านไป 3 นาทีแล้วยังตรวจไม่เสร็จ ลองเช็กใน "ประวัติการส่ง" อีกครั้งในภายหลัง',
     invalidId: (id) => `id ไม่ถูกต้อง: ${id}`,

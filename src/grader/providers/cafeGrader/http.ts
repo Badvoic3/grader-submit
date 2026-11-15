@@ -124,9 +124,15 @@ export class HttpSession {
         continue;
       }
 
-      const text = await res.text();
+      let text: string;
+      try {
+        text = await res.text();
+      } catch (err) {
+        if (opts.signal?.aborted) throw err;
+        throw networkErrorFrom(err, new URL(url).host); // the body timed out or was cut
+      }
       if (res.status >= 500) {
-        throw new NetworkError(`The grader returned an error (HTTP ${res.status}).`, 'server');
+        throw new NetworkError(G.httpError(res.status), 'server');
       }
       return {
         status: res.status,

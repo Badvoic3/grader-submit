@@ -44,6 +44,7 @@ import { cleanName, placeholder, resolveProblem } from './mapping/match';
 import { MappingStore } from './mapping/store';
 import { matchNote, type MatchInfo, NO_MATCH_INFO } from './mapping/linkActions';
 import { nameMatchesProblem, renameProposal } from './mapping/renameToProblem';
+import { rememberNewest } from './shared/lru';
 import { CELEBRATE, DEFAULT_BASE_URL, LIMITS, SUBMISSION_SCHEME, TIMING, troubleshootingUrl, userGuideUrl, WEB_PATHS } from './shared/constants';
 import { MATCH_SOURCE, S, W } from './shared/strings';
 import { KEYS } from './shared/stateKeys';
@@ -114,6 +115,8 @@ export class GraderController implements vscode.Disposable {
   private changingAccount = false;
   /** Raised by each typed login and account change: a login still waiting on its check gives up. */
   private loginAttempt = 0;
+  /** Sources of submissions opened in a diff, by id (the newest few). */
+  private readonly comparedSources = new Map<number, string>();
   private readonly server: ServerFlow;
   /** Matching details for the active file (picker suggestions, ambiguous candidates). */
   private matchInfo: MatchInfo = NO_MATCH_INFO;
@@ -652,6 +655,7 @@ export class GraderController implements vscode.Disposable {
     this.submitFlow.results.clear();
     this.runner.reset();
     this.expandedSubmission = null;
+    this.comparedSources.clear();
     this.data.clear();
     // The cleanup was worked out for the previous grader; the next problem list starts it again.
     this.migrationRun++;
@@ -1626,6 +1630,8 @@ export class GraderController implements vscode.Disposable {
     if (!this.fileUri) return;
     const d = await this.detailWithSource(id);
     if (!d) return;
+    // A submission still grading isn't cached, so the diff's left side keeps its own copy.
+    rememberNewest(this.comparedSources, d.id, d.source ?? '', LIMITS.comparedSourcesMax);
     const name = d.sourceFilename || 'submission';
     const left = vscode.Uri.from({ scheme: SUBMISSION_SCHEME, path: `/${d.id}/${name}` });
     const right = this.folder.targetUri() ?? this.fileUri; // folder mode: the file Submit sends
@@ -1636,7 +1642,7 @@ export class GraderController implements vscode.Disposable {
   /** Content for `cedt-grader-submission:/<id>/<file>` URIs (cache only, no request). */
   submissionSource(uri: vscode.Uri): string {
     const id = Number(uri.path.split('/')[1]);
-    return this.data.detail(id)?.source ?? '';
+    return this.data.detail(id)?.source ?? this.comparedSources.get(id) ?? '';
   }
 
   // ---------------------------------------------------------------- browser

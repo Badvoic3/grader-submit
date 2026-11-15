@@ -112,4 +112,7 @@ export class PollTimeoutError extends GraderError {}
 /** A login that finished after Log out or an account switch: its result is dropped, never shown or acted on. */
 export class LoginSupersededError extends GraderError {}
 
+/** The user cancelled a download: nothing to report. */
+export class CancelledError extends GraderError {}
+
 export class ParseError extends GraderError {}
