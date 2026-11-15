@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EXIT_MAX_MS, ExitMotion, Fluid, makePart, pointerAway, projectTorus, ride, SandGrid, seeded, Swarm, torusPoints, type Part } from '../webview/break/physics';
+import { EXIT_MAX_MS, ExitMotion, Fluid, makePart, pointerAway, projectTorus, ride, SandGrid, seeded, Swarm, SwarmLead, pointerSpeed, torusPoints, type Part } from '../webview/break/physics';
 
 const parts = (n: number, rnd = seeded(3), cols = 30): Part[] => Array.from({ length: n }, (_, i) => makePart(i % 7, 60 + (i % cols) * 8, 20 + Math.floor(i / cols) * 18, Math.floor(i / cols), i % cols, rnd));
 
@@ -135,7 +135,7 @@ describe('break tab motion', () => {
     expect(ps.every((p) => p.x > -20 && p.x < 420 && p.y > -20 && p.y < 320)).toBe(true);
   });
 
-  it('the pointer counts as away with no leave event: stopped at an edge, or still for a while; never while held', () => {
+  it('the pointer counts as away once it left: a leave event, or stopped at an edge; never for resting inside, never while held', () => {
     const q = { seen: true, inside: true, down: false, x: 400, y: 300, idleMs: 100, W: 800, H: 600 };
     expect(pointerAway(q)).toBe(false);
     expect(pointerAway({ ...q, seen: false })).toBe(true);
@@ -144,8 +144,47 @@ describe('break tab motion', () => {
     expect(pointerAway({ ...q, y: 595, idleMs: 300 })).toBe(true); // stopped there: it went out
     expect(pointerAway({ ...q, x: 5, idleMs: 300 })).toBe(true);
     expect(pointerAway({ ...q, idleMs: 4000 })).toBe(false); // resting in the middle
-    expect(pointerAway({ ...q, idleMs: 6000 })).toBe(true);
-    expect(pointerAway({ ...q, idleMs: 6000, down: true })).toBe(false);
+    expect(pointerAway({ ...q, idleMs: 600_000 })).toBe(false); // however long: no idle timer
+    expect(pointerAway({ ...q, inside: false, down: true })).toBe(false);
+  });
+
+  it('no leave event arrives in VS Code: moves that stop while fast enough to carry the pointer out count as leaving', () => {
+    const q = { seen: true, inside: true, down: false, x: 700, y: 300, vx: 2, vy: 0, idleMs: 200, W: 800, H: 600 };
+    expect(pointerAway(q)).toBe(true); // 100 px from the right edge at 2 px/ms, then nothing
+    expect(pointerAway({ ...q, idleMs: 60 })).toBe(false); // just between two moves
+    expect(pointerAway({ ...q, x: 400 })).toBe(false); // that speed wouldn't reach an edge from the middle
+    expect(pointerAway({ ...q, vx: 0.05 })).toBe(false); // slowing to a stop near the edge: resting
+    expect(pointerAway({ ...q, x: 100, vx: -1 })).toBe(true); // out to the left
+    expect(pointerAway({ ...q, y: 520, vx: 0, vy: 0.8 })).toBe(true); // out at the bottom
+    expect(pointerAway({ ...q, down: true })).toBe(false);
+  });
+
+  it('pointer speed is smoothed over moves and starts from rest after a pause', () => {
+    let v = { vx: 0, vy: 0 };
+    for (let i = 0; i < 10; i++) v = pointerSpeed(v, 32, -16, 16);
+    expect(v.vx).toBeCloseTo(2, 3);
+    expect(v.vy).toBeCloseTo(-1, 3);
+    expect(pointerSpeed(v, 5, 5, 400)).toEqual({ vx: 0, vy: 0 });
+    expect(pointerSpeed(v, 5, 5, 0)).toEqual({ vx: 0, vy: 0 });
+  });
+
+  it('the swarm stays on a resting pointer for as long as it is inside, and moves off once it leaves', () => {
+    const lead = new SwarmLead(800, 600);
+    const pointer = { seen: true, inside: true, down: false, x: 300, y: 200, vx: 0, vy: 0, at: 0 };
+    let now = 0;
+    const frames = (ms: number) => { for (const end = now + ms; now < end; now += 1000 / 60) lead.step(1000 / 60, now, pointer, now); };
+    frames(60_000); // a minute without moving: the old 5 s timer would have sent it off
+    expect([lead.x, lead.y]).toEqual([300, 200]);
+    pointer.inside = false; // the leave event
+    frames(250);
+    const after = Math.hypot(lead.x - 300, lead.y - 200);
+    expect(after).toBeGreaterThan(1); // it set off, from where the pointer was: no jump
+    expect(after).toBeLessThan(150);
+    frames(3000);
+    expect(Math.hypot(lead.x - 300, lead.y - 200)).toBeGreaterThan(after);
+    pointer.inside = true; pointer.x = 500; pointer.y = 400; pointer.at = now; // back: it follows at once
+    frames(100);
+    expect([lead.x, lead.y]).toEqual([500, 400]);
   });
 
   it('the fluid projection removes most of the divergence', () => {

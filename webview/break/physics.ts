@@ -394,18 +394,57 @@ export class Fluid {
 export const SWARM = { count: 650, spread: 0.18, swirl: 0.6, wander: 0.5, hold: 0.7, intro: 1.4 } as const;
 
 /**
- * Is the pointer gone from the tab? A webview nested in VS Code's frames often gets no leave event, so besides one:
- * it stopped right at an edge (it went out that way), or it hasn't moved for a while (the person looked away).
- * While the button is held it always counts as here.
+ * Is the pointer gone from the tab? Only leaving counts (user, 2026-11-15): a pointer resting inside keeps the swarm,
+ * however long. The tab gets no leave event in VS Code (checked 2026-11-15: no mouseout, mouseleave, pointerout or
+ * pointerleave arrives when the pointer moves onto the workbench), so leaving is read from the last moves: the pointer
+ * stopped right at an edge, or its moves stopped while its speed would have carried it out (a person stopping inside
+ * slows down first). While the button is held it always counts as here.
  */
-export function pointerAway(q: { seen: boolean; inside: boolean; down: boolean; x: number; y: number; idleMs: number; W: number; H: number }): boolean {
+export function pointerAway(q: { seen: boolean; inside: boolean; down: boolean; x: number; y: number; vx?: number; vy?: number; idleMs: number; W: number; H: number }): boolean {
   if (!q.seen) return true;
   if (q.down) return false;
   if (!q.inside) return true;
-  const m = SWARM_AWAY.edgePx, atEdge = q.x < m || q.y < m || q.x > q.W - m || q.y > q.H - m;
-  return (atEdge && q.idleMs > SWARM_AWAY.edgeIdleMs) || q.idleMs > SWARM_AWAY.idleMs;
+  const { edgePx: m, edgeIdleMs, flingIdleMs, flingMs } = SWARM_AWAY;
+  const atEdge = q.x < m || q.y < m || q.x > q.W - m || q.y > q.H - m;
+  if (atEdge && q.idleMs > edgeIdleMs) return true;
+  if (q.idleMs <= flingIdleMs) return false;
+  const px = q.x + (q.vx ?? 0) * flingMs, py = q.y + (q.vy ?? 0) * flingMs;
+  return px < 0 || py < 0 || px > q.W || py > q.H;
 }
-export const SWARM_AWAY = { edgePx: 28, edgeIdleMs: 250, idleMs: 5000 } as const;
+/** `fling*`: moves that stop for `flingIdleMs` while the speed (px/ms) would have taken the pointer out within `flingMs`. */
+export const SWARM_AWAY = { edgePx: 28, edgeIdleMs: 250, flingIdleMs: 120, flingMs: 150 } as const;
+
+/** The pointer's speed in px/ms, smoothed over its last moves; a move after a pause starts from rest. */
+export function pointerSpeed(prev: { vx: number; vy: number }, dx: number, dy: number, dtMs: number): { vx: number; vy: number } {
+  if (!(dtMs > 0) || dtMs > 100) return { vx: 0, vy: 0 };
+  return { vx: prev.vx * 0.4 + (dx / dtMs) * 0.6, vy: prev.vy * 0.4 + (dy / dtMs) * 0.6 };
+}
+
+type PointerState = { seen: boolean; inside: boolean; down: boolean; x: number; y: number; vx: number; vy: number; at: number };
+
+/**
+ * Where the swarm heads: the pointer while it is over the tab, resting or not; once it has left, a hand-like wander
+ * (two slow, drifting loops) that starts from where the pointer was and eases there with a spring, so nothing jumps
+ * either way. `now` is the clock `pointer.at` was read from; `t` the scene's time.
+ */
+export class SwarmLead {
+  x: number; y: number; vx = 0; vy = 0;
+  constructor(private W: number, private H: number) { this.x = W / 2; this.y = H * 0.45; }
+  resize(W: number, H: number): void { this.W = W; this.H = H; }
+  wander(t: number): { x: number; y: number } {
+    const { W, H } = this;
+    return {
+      x: W / 2 + W * 0.3 * Math.sin(t * 0.00029 + 1.3 * Math.sin(t * 0.00011)),
+      y: H * 0.47 + H * 0.26 * Math.sin(t * 0.00041 + 1.7 + 1.1 * Math.cos(t * 0.00013)),
+    };
+  }
+  step(dtMs: number, t: number, pointer: PointerState, now: number): void {
+    if (!pointerAway({ ...pointer, idleMs: now - pointer.at, W: this.W, H: this.H })) { this.x = pointer.x; this.y = pointer.y; this.vx = 0; this.vy = 0; return; }
+    const w = this.wander(t), s = dtMs / 1000, k = 6, c = 2 * Math.sqrt(k) * 0.9;
+    this.vx += ((w.x - this.x) * k - this.vx * c) * s; this.vy += ((w.y - this.y) * k - this.vy * c) * s;
+    this.x += this.vx * s; this.y += this.vy * s;
+  }
+}
 
 export class Swarm {
   fluid: Fluid;

@@ -6,6 +6,9 @@
 - **The input always shows** on every case, passed or failed (it used to fold away once a case had run). Its fold still closes it.
 - **A passed case shows one Output block** instead of Expected and Actual side by side. A failed case still shows both, with the differences marked.
 
+### Take a break
+- **Swarm stays with a resting mouse:** your code now swirls around the cursor for as long as it rests in the tab, and starts to wander only once the cursor leaves (the 5-second idle timer is gone).
+
 ## 1.1.1 — 2026-11-09
 
 ### Break scenes & theme colouring

@@ -4,7 +4,7 @@
  * textContent. Drawing: one glyph atlas (each character + colour drawn once), the loop stops when nothing moves
  * and while the tab is hidden, slow scenes draw at 30 fps.
  */
-import { clamp01, easeInOut, EXIT_MAX_MS, ExitMotion, makePart, type Part, pointerAway, projectTorus, ride, SandGrid, seeded, Swarm, SWARM, torusPoints } from './physics';
+import { clamp01, easeInOut, EXIT_MAX_MS, ExitMotion, makePart, type Part, pointerSpeed, projectTorus, ride, SandGrid, seeded, Swarm, SWARM, SwarmLead, torusPoints } from './physics';
 import { reducedMotion } from '../look';
 import { installTooltips } from '../tooltip';
 import { lineEnd, placeLine, plainAscii } from './text';
@@ -249,7 +249,7 @@ function drawChrome(a: number): void {
   }
 }
 
-const pointer = { x: -1, y: -1, down: false, moved: false, seen: false, inside: false, at: 0 };
+const pointer = { x: -1, y: -1, vx: 0, vy: 0, down: false, moved: false, seen: false, inside: false, at: 0 };
 
 interface Scene {
   parts: Part[];
@@ -388,23 +388,12 @@ function swarmScene(): Scene {
   const parts = chars.concat(copies(SWARM.count));
   const swarm = new Swarm(parts, W, H, { w: cw / 2, h: lh / 2 }, rnd);
   const look = new Float32Array(parts.length);
-  // Where the swarm heads: the pointer while it is over the tab; otherwise a hand-like wander (two slow, drifting
-  // loops) that starts from where the pointer was and eases there with a spring, so nothing jumps either way.
-  const lead = { x: W / 2, y: H * 0.45, vx: 0, vy: 0 };
-  const wander = (t: number) => ({
-    x: W / 2 + W * 0.3 * Math.sin(t * 0.00029 + 1.3 * Math.sin(t * 0.00011)),
-    y: H * 0.47 + H * 0.26 * Math.sin(t * 0.00041 + 1.7 + 1.1 * Math.cos(t * 0.00013)),
-  });
+  const lead = new SwarmLead(W, H); // the pointer while it is over the tab; a wander once it has left
   return {
     parts, fps: 60, pace: 0.5, cardTop: '18%', trails: 0.55, ownSpeed: true, always: true,
-    resize() { swarm.resize(W, H); },
+    resize() { swarm.resize(W, H); lead.resize(W, H); },
     step(dt, t) {
-      if (!pointerAway({ ...pointer, idleMs: performance.now() - pointer.at, W, H })) { lead.x = pointer.x; lead.y = pointer.y; lead.vx = 0; lead.vy = 0; }
-      else {
-        const w = wander(t), s = dt / 1000, k = 6, c = 2 * Math.sqrt(k) * 0.9;
-        lead.vx += ((w.x - lead.x) * k - lead.vx * c) * s; lead.vy += ((w.y - lead.y) * k - lead.vy * c) * s;
-        lead.x += lead.vx * s; lead.y += lead.vy * s;
-      }
+      lead.step(dt, t, pointer, performance.now());
       swarm.step(dt / 1000, lead.x, lead.y);
       parts.forEach((p, i) => {
         if (!swarm.awake(i)) return;
@@ -533,13 +522,15 @@ back.addEventListener('click', startExit);
 addEventListener('keydown', (e) => { if (e.key === 'Escape') startExit(); });
 cv.addEventListener('pointermove', (e) => {
   if (pointer.down && S?.drag && pointer.seen) S.drag(e.clientX - pointer.x, e.clientY - pointer.y);
-  pointer.x = e.clientX; pointer.y = e.clientY; pointer.moved = true; pointer.seen = true; pointer.inside = true; pointer.at = performance.now(); kick();
+  const now = performance.now();
+  if (pointer.seen) Object.assign(pointer, pointerSpeed(pointer, e.clientX - pointer.x, e.clientY - pointer.y, now - pointer.at));
+  pointer.x = e.clientX; pointer.y = e.clientY; pointer.moved = true; pointer.seen = true; pointer.inside = true; pointer.at = now; kick();
 });
 cv.addEventListener('pointerleave', () => { if (!pointer.down) pointer.inside = false; });
 document.documentElement.addEventListener('mouseleave', () => { if (!pointer.down) pointer.inside = false; });
 addEventListener('blur', () => { if (!pointer.down) pointer.inside = false; });
 cv.addEventListener('pointerdown', (e) => {
-  pointer.down = true; pointer.x = e.clientX; pointer.y = e.clientY; pointer.seen = true; pointer.inside = true; pointer.at = performance.now();
+  pointer.down = true; pointer.x = e.clientX; pointer.y = e.clientY; pointer.vx = 0; pointer.vy = 0; pointer.seen = true; pointer.inside = true; pointer.at = performance.now();
   if (phase === 'run') S?.press?.();
   cv.setPointerCapture(e.pointerId); kick();
 });
