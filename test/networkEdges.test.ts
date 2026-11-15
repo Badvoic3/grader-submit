@@ -11,7 +11,7 @@ import { CancelledError, GraderClient, NetworkError } from '../src/grader';
 import { DataService } from '../src/data/dataService';
 import { TestcaseStore } from '../src/data/testcaseStore';
 import { isInside, remapPath } from '../src/mapping/paths';
-import { rememberNewest } from '../src/shared/lru';
+import { noteRecent, rememberNewest } from '../src/shared/lru';
 import { FakeGrader } from './fakeServer';
 
 function client(fetch: (input: string, init?: RequestInit) => Promise<Response>, waits: number[] = []) {
@@ -135,5 +135,16 @@ describe('sources kept for open diffs', () => {
     rememberNewest(m, 2, 's2b', 2);
     rememberNewest(m, 4, 's4', 2);
     expect([...m.entries()]).toEqual([[2, 's2b'], [4, 's4']]);
+  });
+});
+
+describe('recently opened', () => {
+  it('writes nothing for a re-check of the newest within the resolution; otherwise moves it to the front', () => {
+    const all = { 1: 1000, 2: 5000 };
+    expect(noteRecent(all, 2, 5000 + 30_000, 60_000, 50)).toBeNull();
+    expect(noteRecent(all, 2, 5000 + 61_000, 60_000, 50)).toEqual({ 2: 66_000, 1: 1000 });
+    expect(noteRecent(all, 1, 6000, 60_000, 50)).toEqual({ 1: 6000, 2: 5000 }); // not the newest: written
+    expect(noteRecent({}, 7, 10, 60_000, 50)).toEqual({ 7: 10 });
+    expect(Object.keys(noteRecent({ 1: 1, 2: 2, 3: 3 }, 4, 4, 60_000, 2)!)).toEqual(['3', '4']);
   });
 });

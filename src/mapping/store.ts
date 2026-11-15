@@ -80,7 +80,9 @@ export class MappingStore {
   }
 
   async deleteAuto(uri: vscode.Uri): Promise<void> {
-    await this.local.update(AUTO_KEY, autoAfterDelete(this.autoMatches(), uri.fsPath));
+    const before = this.autoMatches();
+    const after = autoAfterDelete(before, uri.fsPath);
+    if (after.length !== before.length) await this.local.update(AUTO_KEY, after); // most deletes touch no match
   }
 
   /** Absolute paths of files explicitly marked "not linked". */

@@ -63,6 +63,16 @@ describe('MappingStore', () => {
     store = new MappingStore(ctx as never);
   });
 
+  it('deleting a file writes workspace state only when it had an auto-match', async () => {
+    await store.recordAuto(uri(join(w, 'a.cpp')), 1, 'filename');
+    const update = vi.spyOn(ctx.workspaceState, 'update');
+    await store.deleteAuto(uri(join(w, 'other.txt')));
+    expect(update).not.toHaveBeenCalled();
+    await store.deleteAuto(uri(join(w, 'a.cpp')));
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(store.autoMatches()).toEqual([]);
+  });
+
   it('set, get, remove; no file appears in the workspace', async () => {
     await store.set(uri(join(w, 'a.cpp')), link(1));
     await store.set(uri(join(w, 'pkg')), link(2, { folder: true, submitFile: 'a.h' }));

@@ -273,6 +273,8 @@ export const MATCH = {
 export const LIMITS = {
   /** Submission sources kept for open diffs (a submission still grading isn't cached). */
   comparedSourcesMax: 10,
+  /** "Recently opened" keeps time to this resolution: re-checks of the same file in between write nothing. */
+  recentlyOpenedResolutionMs: 60_000,
   /** Files looked through for old `.prob` files: names only, so far more than the match index. */
   oldFilesScanMax: 100_000,
   /** A link write takes milliseconds: a lock this old was left by a crash. */

@@ -44,7 +44,7 @@ import { cleanName, placeholder, resolveProblem } from './mapping/match';
 import { MappingStore } from './mapping/store';
 import { matchNote, type MatchInfo, NO_MATCH_INFO } from './mapping/linkActions';
 import { nameMatchesProblem, renameProposal } from './mapping/renameToProblem';
-import { rememberNewest } from './shared/lru';
+import { noteRecent, rememberNewest } from './shared/lru';
 import { CELEBRATE, DEFAULT_BASE_URL, LIMITS, SUBMISSION_SCHEME, TIMING, troubleshootingUrl, userGuideUrl, WEB_PATHS } from './shared/constants';
 import { MATCH_SOURCE, S, W } from './shared/strings';
 import { KEYS } from './shared/stateKeys';
@@ -817,7 +817,7 @@ export class GraderController implements vscode.Disposable {
 
   // ---------------------------------------------------------------- state
 
-  private problemView(p: Problem): ProblemView {
+  private problemView(p: Problem, opened = this.ctx.workspaceState.get<Record<string, number>>(KEYS.recentlyOpened, {})): ProblemView {
     return {
       id: p.id,
       name: cleanName(p.name),
@@ -829,7 +829,7 @@ export class GraderController implements vscode.Disposable {
       status: problemStatus(p),
       tags: p.tags ?? [],
       lastSubmissionTime: p.lastSubmissionTime,
-      lastOpened: this.ctx.workspaceState.get<Record<string, number>>(KEYS.recentlyOpened, {})[p.id] ?? null,
+      lastOpened: opened[p.id] ?? null,
     };
   }
 
@@ -915,7 +915,7 @@ export class GraderController implements vscode.Disposable {
         loading: pState.loading,
         loaded: list !== undefined,
         stale: pState.stale,
-        items: this.problems.map((p) => this.problemView(p)),
+        items: ((opened) => this.problems.map((p) => this.problemView(p, opened)))(this.ctx.workspaceState.get<Record<string, number>>(KEYS.recentlyOpened, {})),
         error: pState.error,
         filter: this.problemFilter(),
         topics: this.topics(list),
@@ -1039,10 +1039,10 @@ export class GraderController implements vscode.Disposable {
 
   /** Remember when a problem was last worked on (for "Recently opened" sorting). */
   private async noteOpened(problemId: number): Promise<void> {
-    const all = { ...this.ctx.workspaceState.get<Record<string, number>>(KEYS.recentlyOpened, {}) };
-    all[problemId] = Date.now();
-    const keep = Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, LIMITS.recentlyOpenedMax);
-    await this.ctx.workspaceState.update(KEYS.recentlyOpened, Object.fromEntries(keep));
+    const all = this.ctx.workspaceState.get<Record<string, number>>(KEYS.recentlyOpened, {});
+    // A re-check of the same file a moment later writes nothing.
+    const next = noteRecent(all, problemId, Date.now(), LIMITS.recentlyOpenedResolutionMs, LIMITS.recentlyOpenedMax);
+    if (next) await this.ctx.workspaceState.update(KEYS.recentlyOpened, next);
   }
 
   /** Full name for the Account section (`GET /api/v1/me`, once per session, after a token restore). */
