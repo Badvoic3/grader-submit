@@ -649,6 +649,8 @@ const EN_W = {
   runCompileError: 'Compile error',
   /** The pill's tooltip after the code changed since the run. */
   runEdited: 'You changed the code after this run.',
+  /** The Test view's Load notice: load the grader's test cases again (they came from the cache). */
+  downloadAgain: 'Download again',
   /** The Test view's line after the code changed since the run. */
   runEditedLine: 'These results are from before your last edit.',
   testsNoFile: 'Open a source file to run tests.',

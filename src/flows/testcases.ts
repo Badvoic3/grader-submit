@@ -8,8 +8,10 @@ import { CancelledError, classifyConnectionError, type Problem } from '../grader
 import { problemSubtitle } from '../mapping/match';
 import { sampleCasesToImport } from '../mapping/sampleImport';
 import type { GraderCase } from '../mapping/testCases';
+import type { LoadNotice } from '../shared/messages';
 import { S } from '../shared/strings';
 import type { Host } from './host';
+import { ownerKey } from './runner';
 
 /**
  * Loading test cases for the current problem: the grader's ("Load test cases")
@@ -20,6 +22,9 @@ export class TestCases {
   samplesBusy = false;
   /** The cached statement of the current problem is not a PDF (no "Load samples" button). Unknown = false. */
   statementNoPdf = false;
+  /** The last Load result and whose list it is about; the Test view shows it while that list is shown. */
+  private notice: (LoadNotice & { key: string }) | null = null;
+  private noticeSeq = 0;
 
   constructor(
     private readonly host: Host,
@@ -27,6 +32,55 @@ export class TestCases {
     /** pdf.js (legacy build, dist/pdfjs) for "Load sample cases": imported on first use only. */
     private readonly pdfjs: () => Promise<Pdfjs>,
   ) {}
+
+  /** The notice for the list the Test view shows (`key`: the runner's owner key). */
+  noticeFor(key: string | null): LoadNotice | null {
+    if (!this.notice || this.notice.key !== key) return null;
+    const { key: _, ...n } = this.notice;
+    return n;
+  }
+
+  dismissNotice(id: number): void {
+    if (this.notice?.id !== id) return;
+    this.notice = null;
+    this.host.emit();
+  }
+
+  /** The notice's button: Open statement, or Download again. */
+  async noticeAction(id: number): Promise<void> {
+    const n = this.notice;
+    if (n?.id !== id || !n.action) return;
+    if (n.action === 'openStatement') {
+      const p = this.host.currentProblem();
+      if (p) await this.host.openStatement(p.id);
+    } else await this.loadTestcases(true);
+  }
+
+  /** A new Load starts: the last one's notice goes. */
+  private clearNotice(): void {
+    if (!this.notice) return;
+    this.notice = null;
+    this.host.emit();
+  }
+
+  /**
+   * One Load result, said once: in the Test view when it is on screen; otherwise a toast for good news,
+   * and inline in the sidebar (a toast when that is hidden) for problems. Returns the toast's button.
+   */
+  private async say(tone: LoadNotice['tone'], text: string, action: LoadNotice['action'] = null, err: unknown = null): Promise<string | undefined> {
+    const h = this.host;
+    const owner = h.runner.owner();
+    if (h.testsShowing() && owner) {
+      this.notice = { id: ++this.noticeSeq, key: ownerKey(owner), tone, text, action };
+      h.emit();
+      return undefined;
+    }
+    if (tone === 'warn') {
+      await h.tellInline(err, text);
+      return undefined;
+    }
+    return vscode.window.showInformationMessage(text, ...(action === 'downloadAgain' ? [S.testcases.downloadAgain] : []));
+  }
 
   /** The active file changed: what the card needs to know without a request. */
   async onActiveFile(problem: Problem | null): Promise<void> {
@@ -53,8 +107,9 @@ export class TestCases {
     const problem = h.currentProblem();
     if (!problem || !h.fileUri || this.busy) return;
     const file = h.folder.runUri() ?? h.fileUri;
+    this.clearNotice();
     if (!problem.hasTestcase) {
-      void vscode.window.showInformationMessage(S.testcases.none(problem.name));
+      void this.say('info', S.testcases.none(problem.name));
       return;
     }
     // Writing test cases for a guess: ask once (yes confirms the link).
@@ -89,7 +144,7 @@ export class TestCases {
       h.connectionOk();
       downloaded();
       if (res.status === 'not-available') {
-        void vscode.window.showInformationMessage(S.testcases.notAllowed(problem.name));
+        void this.say('info', S.testcases.notAllowed(problem.name));
         return;
       }
       const { set } = res;
@@ -97,14 +152,12 @@ export class TestCases {
       const programText = await this.programText(file);
       const { cases, key } = stripGraderKey(set.cases, programText);
       const keyNote = key ? S.testcases.keyRemoved : '';
-      const refetch = S.testcases.downloadAgain;
-      const extra = res.fromCache ? [refetch] : [];
-      const pick = await this.intoList(problem, cases, 'grader', (added, kept) => S.testcases.loaded(added, kept, total - set.cases.length) + keyNote, extra);
-      if (pick === refetch) await this.loadTestcases(true);
+      const pick = await this.intoList(problem, cases, 'grader', (added, kept) => S.testcases.loaded(added, kept, total - set.cases.length) + keyNote, res.fromCache ? 'downloadAgain' : null);
+      if (pick === S.testcases.downloadAgain) await this.loadTestcases(true);
     } catch (err) {
       if (err instanceof CancelledError) return; // the user pressed Cancel: nothing to say
       if (classifyConnectionError(err)) h.reportError(err, () => this.loadTestcases(refresh));
-      else void vscode.window.showErrorMessage(S.testcases.failed(h.describe(err)));
+      else void this.say('warn', S.testcases.failed(h.describe(err)), null, err);
     } finally {
       downloaded();
     }
@@ -120,6 +173,7 @@ export class TestCases {
     const h = this.host;
     const problem = h.currentProblem();
     if (!problem || !h.fileUri || this.samplesBusy) return;
+    this.clearNotice();
     if (!(await h.links.confirmSuggestedFor(h.fileUri, problem, S.samples.suggestedQ(problem.name, problemSubtitle(problem.name, problem.fullName) ?? ''), S.samples.load))) return;
     this.samplesBusy = true;
     h.emit();
@@ -133,14 +187,14 @@ export class TestCases {
       }
       if (st.kind !== 'pdf') {
         this.statementNoPdf = true; // the button goes away (and stays away for this problem while cached)
-        void h.tellInline(null, S.samples.noPdf);
+        void this.say('warn', S.samples.noPdf, 'openStatement');
         return;
       }
       tables = await readSampleTables(st.bytes, await this.pdfjs());
     } catch (err) {
       if (classifyConnectionError(err)) h.reportError(err, () => this.loadSampleCases());
-      else if (err instanceof SampleReadLimitError) void h.tellInline(null, S.samples.tooLong); // nothing written
-      else void h.tellInline(err, S.samples.failed(h.describe(err)));
+      else if (err instanceof SampleReadLimitError) void this.say('warn', S.samples.tooLong); // nothing written
+      else void this.say('warn', S.samples.failed(h.describe(err)), null, err);
       return;
     } finally {
       this.samplesBusy = false;
@@ -148,7 +202,7 @@ export class TestCases {
     }
     const found = tables.flatMap((t) => t.cases);
     if (!found.length) {
-      void h.tellInline(null, S.samples.none);
+      void this.say('warn', S.samples.none, 'openStatement');
       return;
     }
     // A sample table with rows that couldn't be read is an incomplete read: load nothing rather than
@@ -156,16 +210,16 @@ export class TestCases {
     // can't be detected; the tooltip asks to check the cases.
     const skipped = tables.reduce((n, t) => n + (t.skipped ?? 0), 0);
     if (skipped) {
-      void h.tellInline(null, S.samples.incomplete(skipped));
+      void this.say('warn', S.samples.incomplete(skipped), 'openStatement');
       return;
     }
     const annotated = found.filter((c) => c.annotated).length;
     const cases = sampleCasesToImport(found);
     const note = annotated ? S.samples.annotated(annotated) : '';
     try {
-      await this.intoList(problem, cases, 'sample', (added, kept) => S.samples.loaded(added, kept) + note, []);
+      await this.intoList(problem, cases, 'sample', (added, kept) => S.samples.loaded(added, kept) + note, null);
     } catch (err) {
-      void vscode.window.showErrorMessage(S.samples.failed(h.describe(err)));
+      void this.say('warn', S.samples.failed(h.describe(err)), null, err);
     }
   }
 
@@ -178,7 +232,7 @@ export class TestCases {
   }
 
   /** Merge into the problem's list, carrying over cases written before the file was linked. */
-  private async intoList(problem: Problem, cases: GraderCase[], source: 'grader' | 'sample', message: (added: number, kept: number) => string, extra: string[]): Promise<string | undefined> {
+  private async intoList(problem: Problem, cases: GraderCase[], source: 'grader' | 'sample', message: (added: number, kept: number) => string, action: LoadNotice['action']): Promise<string | undefined> {
     const h = this.host;
     const { added, kept } = await h.cases.merge(
       problem.id,
@@ -186,6 +240,6 @@ export class TestCases {
       source,
     );
     await h.runner.onActiveFile();
-    return vscode.window.showInformationMessage(message(added, kept), ...extra);
+    return this.say('ok', message(added, kept), action);
   }
 }

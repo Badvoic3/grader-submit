@@ -33,7 +33,7 @@ function boot(lang: 'en' | 'th' = 'en') {
 }
 
 const head = (extra: Partial<TestsHead> = {}): TestsHead => ({
-  title: '01_Expr_11', problemId: 2, limits: { timeMs: 1000, memoryMB: 256, source: 'grader' }, summary: { kind: 'not-run' }, running: false, failure: null, leftOut: [], load: { testcases: { busy: false }, samples: { busy: false } }, sampleTip: false, ...extra,
+  title: '01_Expr_11', problemId: 2, limits: { timeMs: 1000, memoryMB: 256, source: 'grader' }, summary: { kind: 'not-run' }, running: false, failure: null, leftOut: [], load: { testcases: { busy: false }, samples: { busy: false } }, sampleTip: false, notice: null, ...extra,
 });
 const text = (t: string) => ({ text: t, truncated: false });
 const kase = (id: string, extra: Partial<TestCaseView> = {}): TestCaseView => ({ id, source: 'grader', input: text('1 2\n'), expected: text('3\n'), ...extra });
@@ -85,7 +85,30 @@ describe('Test view', () => {
     expect(button('Reading…')!.disabled).toBe(true);
   });
 
-  it('results older than the code: a grey pill with a clock, and one line under the buttons', () => {
+  it('a Load result shows under the buttons: Dismiss, and the action where there is one', () => {
+    const { doc, sent, post, button } = boot();
+    post({ fresh: true, head: head({ notice: { id: 3, tone: 'ok', text: 'Loaded 4 sample cases from the statement.', action: null } }), order: ['a'], cases: [kase('a')] });
+    const box = () => doc.querySelector<HTMLElement>('.notice[role="status"]');
+    expect(box()!.textContent).toContain('Loaded 4 sample cases');
+    expect(box()!.classList.contains('warn')).toBe(false);
+    expect(box()!.querySelector('.codicon-check')).not.toBeNull();
+    button('Dismiss')!.click();
+    expect(sent.at(-1)).toEqual({ type: 'dismissNotice', id: 3 });
+
+    post({ head: head({ notice: { id: 4, tone: 'warn', text: 'No example table found in the statement.', action: 'openStatement' } }) });
+    expect(box()!.classList.contains('warn')).toBe(true);
+    button('Open statement')!.click();
+    expect(sent.at(-1)).toEqual({ type: 'noticeAction', id: 4 });
+
+    post({ head: head({ notice: { id: 5, tone: 'ok', text: 'Loaded.', action: 'downloadAgain' } }) });
+    button('Download again')!.click();
+    expect(sent.at(-1)).toEqual({ type: 'noticeAction', id: 5 });
+
+    post({ head: head({ notice: null }) });
+    expect(box()).toBeNull();
+  });
+
+    it('results older than the code: a grey pill with a clock, and one line under the buttons', () => {
     const { doc, post } = boot();
     const line = () => [...doc.querySelectorAll('.limit')].map((l) => l.textContent?.trim()).find((t) => t?.startsWith('These results'));
     post({ fresh: true, head: head({ summary: { kind: 'done', passed: 1, total: 2 } }), order: ['a', 'b'], cases: [kase('a'), kase('b')], runs: { a: done('a', 'AC'), b: done('b', 'WA') } });

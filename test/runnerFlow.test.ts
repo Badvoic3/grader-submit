@@ -475,7 +475,7 @@ describe('Runner', () => {
       await r.run();
       const [first, second] = (await store.read(P)).cases.map((c) => c.id);
       await r.editCase(first, { expected: 'x\n' });
-      const v = (h.tests = { busy: false, samplesBusy: false, statementNoPdf: false }, r.testsView());
+      const v = (h.tests = { busy: false, samplesBusy: false, statementNoPdf: false, noticeFor: () => null }, r.testsView());
       expect(v.runs.has(first)).toBe(false);
       expect(v.runs.get(second)?.verdict).toBe('AC');
       expect(v.cases[0]).toMatchObject({ source: 'custom', expected: 'x\n' });
@@ -490,7 +490,7 @@ describe('Runner', () => {
 
     it('add, remove and reorder change the list at once, in order', async () => {
       const { r, ids } = await seeded();
-      h.tests = { busy: false, samplesBusy: false, statementNoPdf: false };
+      h.tests = { busy: false, samplesBusy: false, statementNoPdf: false, noticeFor: () => null };
       await r.addCase();
       expect(r.testsView().cases).toHaveLength(3);
       await r.reorderCases([ids[1], ids[0], r.testsView().cases[2].id]);
@@ -566,7 +566,7 @@ describe('Runner', () => {
 
     it('a re-download that changes a case drops its old result, and only its', async () => {
       await store.merge(7, [{ input: 'a\n', expected: 'a\n', testcaseId: 1 }, { input: 'b\n', expected: 'b\n', testcaseId: 2 }], 'grader');
-      h.tests = { busy: false, samplesBusy: false, statementNoPdf: false };
+      h.tests = { busy: false, samplesBusy: false, statementNoPdf: false, noticeFor: () => null };
       const r = make(programs());
       await r.onActiveFile();
       await r.run();
@@ -590,7 +590,7 @@ describe('Runner', () => {
 
   describe('sample tip', () => {
     beforeEach(() => {
-      h.tests = { busy: false, samplesBusy: false, statementNoPdf: false };
+      h.tests = { busy: false, samplesBusy: false, statementNoPdf: false, noticeFor: () => null };
       h.problem = { id: 7, name: 'P', hasTestcase: true } as never;
     });
     const wrongSample = () => store.merge(7, [{ input: 'a\n', expected: 'nope\n' }], 'sample');
@@ -646,7 +646,7 @@ describe('Runner', () => {
 
   describe('views', () => {
     beforeEach(() => {
-      h.tests = { busy: false, samplesBusy: true, statementNoPdf: false };
+      h.tests = { busy: false, samplesBusy: true, statementNoPdf: false, noticeFor: () => null };
     });
 
     it('main panel: no cases disables Run tests with a reason', async () => {
@@ -662,7 +662,7 @@ describe('Runner', () => {
       h.problem = { id: 7, name: '01_Expr', hasTestcase: true } as never;
       await r.onActiveFile();
       expect(r.testsView().head).toMatchObject({ title: '01_Expr', problemId: 7, load: { testcases: { busy: false }, samples: { busy: true } } });
-      h.tests = { busy: false, samplesBusy: false, statementNoPdf: true };
+      h.tests = { busy: false, samplesBusy: false, statementNoPdf: true, noticeFor: () => null };
       h.problem = { id: 7, name: '01_Expr', hasTestcase: false } as never;
       expect(r.testsView().head.load).toEqual({ testcases: null, samples: null });
       h.problem = null;

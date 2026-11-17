@@ -78,6 +78,8 @@ export interface Host {
   askInline(text: string, buttons: InlinePrompt['buttons'], opts?: AskOptions): Promise<string | undefined>;
   /** An error the user should read once: inline in the panel, a toast only when the panel is hidden. */
   tellInline(err: unknown, msg: string): Promise<void>;
+  /** The Test view is on screen: Load results are shown there, not as toasts. */
+  testsShowing(): boolean;
   /** Toast only when the sidebar is hidden (otherwise the panel already shows the message). */
   showError(err: unknown, msg: string): Promise<void>;
 

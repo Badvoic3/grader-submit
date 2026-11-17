@@ -131,6 +131,7 @@ export class Runner {
             }
           : null,
         sampleTip: !!list && sampleTipShown(list.sampleTip, list.cases, st.runs),
+        notice: h.tests.noticeFor(owner ? ownerKey(owner) : null),
       },
     };
   }

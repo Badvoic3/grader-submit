@@ -369,6 +369,16 @@ export interface TestsHead {
   load: { testcases: { busy: boolean } | null; samples: { busy: boolean } | null } | null;
   /** "PDF samples can be misread". */
   sampleTip: boolean;
+  /** What the last Load said, for this list (null: nothing, or dismissed). Shown under the buttons instead of a toast. */
+  notice: LoadNotice | null;
+}
+
+/** A Load result in the Test view: `ok` loaded, `info` nothing to load, `warn` it went wrong. */
+export interface LoadNotice {
+  id: number;
+  tone: 'ok' | 'info' | 'warn';
+  text: string;
+  action: 'openStatement' | 'downloadAgain' | null;
 }
 
 /**
@@ -404,6 +414,8 @@ export type FromTests =
   | { type: 'close' }
   | { type: 'loadTestcases' }
   | { type: 'loadSamples' }
+  | { type: 'noticeAction'; id: number }
+  | { type: 'dismissNotice'; id: number }
   | { type: 'webviewError'; message: string; stack: string };
 
 export function isFromWebview(m: unknown): m is FromWebview {

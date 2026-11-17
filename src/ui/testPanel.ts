@@ -197,6 +197,12 @@ export class TestPanel implements vscode.Disposable {
       case 'loadSamples':
         await this.opts.tests().loadSampleCases();
         return;
+      case 'noticeAction':
+        if (Number.isInteger(m.id)) await this.opts.tests().noticeAction(m.id);
+        return;
+      case 'dismissNotice':
+        if (Number.isInteger(m.id)) this.opts.tests().dismissNotice(m.id);
+        return;
     }
   }
 

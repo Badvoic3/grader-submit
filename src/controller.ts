@@ -385,6 +385,7 @@ export class GraderController implements vscode.Disposable {
       describe: (err) => c.describe(err),
       askInline: (text, buttons, opts) => c.askInline(text, buttons, opts),
       tellInline: (err, msg) => c.tellInline(err, msg),
+      testsShowing: () => c.testPanel.showing,
       showError: (err, msg) => c.showError(err, msg),
       ensureLoggedIn: () => c.ensureLoggedIn(),
       reportError: (err, retry) => c.reportError(err, retry),

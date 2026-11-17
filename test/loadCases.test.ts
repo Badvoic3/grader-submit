@@ -28,6 +28,8 @@ describe('Load goes to the runner', () => {
   let moved: number;
   let roleAsked: number;
   let confirm: boolean;
+  let showing: boolean;
+  let opened: number[];
   const make = (over: Record<string, unknown> = {}) => {
     const host = {
       currentProblem: () => problem,
@@ -46,7 +48,9 @@ describe('Load goes to the runner', () => {
           return { added: 2, kept: 1, file: {} };
         },
       },
-      runner: { onActiveFile: async () => void moved++ },
+      runner: { onActiveFile: async () => void moved++, owner: () => ({ problemId: 7 }) },
+      testsShowing: () => showing,
+      openStatement: async (id: number) => void opened.push(id),
       statementStore: { cached: async () => ({ kind: 'pdf', bytes: new Uint8Array() }) },
       ...over,
     };
@@ -60,6 +64,8 @@ describe('Load goes to the runner', () => {
     moved = 0;
     roleAsked = 0;
     confirm = true;
+    showing = false;
+    opened = [];
     store = {
       get: vi.fn(async () => ({ status: 'ok', fromCache: false, set: { cases: [{ testcaseId: 11, num: 1, input: '1\n', output: '2\n' }], truncated: [] } })),
     };
@@ -97,6 +103,62 @@ describe('Load goes to the runner', () => {
     await make().loadTestcases();
     expect(store.get).toHaveBeenCalledTimes(2);
     expect(store.get.mock.calls[1][1]).toMatchObject({ refresh: true });
+  });
+
+  describe('with the Test view on screen, the result is said there', () => {
+    it('loaded: a notice for this list, no toast; another list doesn\'t show it', async () => {
+      showing = true;
+      const t = make();
+      await t.loadTestcases();
+      expect(v.info).toEqual([]);
+      expect(t.noticeFor('problem:7')).toEqual({ id: 1, tone: 'ok', text: S.testcases.loaded(2, 1, 0), action: null });
+      expect(t.noticeFor('problem:8')).toBeNull();
+      expect(t.noticeFor(null)).toBeNull();
+    });
+
+    it('Dismiss takes it away; the next Load replaces it', async () => {
+      showing = true;
+      const t = make();
+      await t.loadTestcases();
+      t.dismissNotice(99); // another notice's id: nothing
+      expect(t.noticeFor('problem:7')).not.toBeNull();
+      t.dismissNotice(1);
+      expect(t.noticeFor('problem:7')).toBeNull();
+      await t.loadTestcases();
+      expect(t.noticeFor('problem:7')?.id).toBe(2);
+    });
+
+    it('from the cache it offers Download again, which fetches once more', async () => {
+      showing = true;
+      store.get.mockResolvedValueOnce({ status: 'ok', fromCache: true, set: { cases: [], truncated: [] } });
+      const t = make();
+      await t.loadTestcases();
+      const n = t.noticeFor('problem:7')!;
+      expect(n.action).toBe('downloadAgain');
+      await t.noticeAction(n.id);
+      expect(store.get).toHaveBeenCalledTimes(2);
+      expect(store.get.mock.calls[1][1]).toMatchObject({ refresh: true });
+    });
+
+    it('no sample table: a warning with Open statement, which opens it; nothing goes to the sidebar', async () => {
+      showing = true;
+      const t = make({ statementStore: { cached: async () => ({ kind: 'pdf', bytes: new Uint8Array() }) } });
+      (t as unknown as { pdfjs: () => Promise<unknown> }).pdfjs = async () => ({ getDocument: () => ({ promise: Promise.resolve({ numPages: 0, destroy: async () => {} }) }), GlobalWorkerOptions: {} });
+      await t.loadSampleCases();
+      const n = t.noticeFor('problem:7');
+      expect(n).toMatchObject({ tone: 'warn', action: 'openStatement' });
+      expect(v.info).toEqual([]);
+      await t.noticeAction(n!.id);
+      expect(opened).toEqual([7]);
+    });
+
+    it('a problem with no test cases says so there too', async () => {
+      showing = true;
+      const t = make({ currentProblem: () => ({ ...problem, hasTestcase: false }) });
+      await t.loadTestcases();
+      expect(t.noticeFor('problem:7')).toMatchObject({ tone: 'info', text: S.testcases.none('P') });
+      expect(v.info).toEqual([]);
+    });
   });
 
   it('nothing runs without a problem', async () => {

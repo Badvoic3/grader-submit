@@ -11,7 +11,7 @@ import { pillElement, summaryPill } from './runSummary';
 import { installTooltips } from './tooltip';
 import { diffOutputs, type DiffLine, plainLines } from '../src/runner/diff';
 import type { CaseRun, Captured } from '../src/runner/types';
-import type { FromTests, TestCaseView, TestsHead, ToTests } from '../src/shared/messages';
+import type { FromTests, LoadNotice, TestCaseView, TestsHead, ToTests } from '../src/shared/messages';
 import { W } from '../src/shared/strings';
 
 interface VsCodeApi {
@@ -140,6 +140,7 @@ function renderTop(h: TestsHead): void {
       el('span', { class: 'limit' }, W.testsLimit(h.limits.timeMs / 1000, sizeOf(h.limits.memoryMB), h.limits.source === 'grader')),
     ),
   );
+  if (h.notice) top.append(loadNotice(h.notice));
   if (pill.edited && !empty) top.append(el('div', { class: 'limit' }, icon('edit'), ' ', W.runEditedLine));
   if (h.problemId === null) top.append(el('div', { class: 'limit' }, icon('debug-disconnect'), ' ', W.notLinkedToAProblem));
   if (h.leftOut.length) top.append(el('div', { class: 'limit' }, W.leftOut(h.leftOut.join(', '))));
@@ -489,3 +490,15 @@ window.addEventListener('message', (e: MessageEvent<ToTests>) => {
   }
 });
 send({ type: 'ready' });
+
+/** What the last Load said, under the buttons (instead of a toast): Dismiss, and Open statement or Download again where it helps. */
+function loadNotice(n: LoadNotice): HTMLElement {
+  const label = n.action === 'openStatement' ? W.openStatement : n.action === 'downloadAgain' ? W.downloadAgain : null;
+  return el('div', { class: `notice${n.tone === 'warn' ? ' warn' : ''}`, role: 'status' },
+    el('div', { class: 'row' }, icon(n.tone === 'ok' ? 'check' : n.tone === 'warn' ? 'warning' : 'info'), el('span', { class: 'grow small' }, n.text)),
+    el('div', { class: 'row gap' },
+      label ? button(label, () => send({ type: 'noticeAction', id: n.id }), { kind: n.tone === 'warn' ? 'primary' : 'secondary' }) : null,
+      el('button', { class: 'link small', type: 'button', onclick: () => send({ type: 'dismissNotice', id: n.id }) }, W.dismiss),
+    ),
+  );
+}

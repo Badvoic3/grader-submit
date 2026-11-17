@@ -17,7 +17,7 @@ import type { Strings } from './strings';
  * Everything else was reviewed at checkpoint B (2026-11-03). Add keys here
  * when a new text is translated without review.
  */
-export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun', 'G.statusBar.compileError', 'S.migration.noticeDetail', 'W.runEdited', 'W.runEditedLine'];
+export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun', 'G.statusBar.compileError', 'S.migration.noticeDetail', 'W.runEdited', 'W.runEditedLine', 'W.downloadAgain'];
 
 export const TH: Strings = {
   HOW_LINKED: {
@@ -639,6 +639,7 @@ export const TH: Strings = {
     runPassed: (passed, total) => `ผ่าน ${passed} / ${total}`,
     runCompileError: 'คอมไพล์ไม่ผ่าน',
     runEdited: 'คุณแก้โค้ดหลังจากรันครั้งนี้',
+    downloadAgain: 'ดาวน์โหลดอีกครั้ง',
     runEditedLine: 'ผลเหล่านี้มาจากก่อนการแก้ไขครั้งล่าสุด',
     testsNoFile: 'เปิดไฟล์ source ก่อนจึงจะรันทดสอบได้',
     runAll: 'รันทั้งหมด',
