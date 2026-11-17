@@ -405,6 +405,14 @@ describe.runIf(existsSync(resolve(__dirname, '../esbuild.mjs')))('sidebar webvie
     post({ ...loggedIn, runTests: { summary: { kind: 'compile-error' }, running: false, disabledReason: null, testsOpen: false } });
     expect(pill().textContent).toBe('Compile error');
 
+    // The code changed after the run: grey, a clock, and the tooltip says why.
+    post({ ...loggedIn, runTests: { summary: { kind: 'done', passed: 3, total: 6, edited: true }, running: false, disabledReason: null, testsOpen: false } });
+    expect(pill().textContent).toBe(' 3 / 6 passed');
+    expect([...pill().classList]).toEqual(['pill', 'run-pill', 'quiet', 'edited']);
+    expect(pill().querySelector('.codicon-history')).not.toBeNull();
+    expect(pill().getAttribute('data-tip')).toBe('You changed the code after this run.');
+    expect(pill().getAttribute('aria-label')).toBe('3 / 6 passed. You changed the code after this run.');
+
     // Not linked to a problem: the same rows.
     post({ ...loggedIn, problem: null, notLinked: true, runTests: { summary: { kind: 'not-run' }, running: false, disabledReason: null, testsOpen: false } });
     expect(find('Run tests')!.disabled).toBe(false);

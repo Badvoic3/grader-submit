@@ -647,6 +647,10 @@ const EN_W = {
   runRunning: (done: number, total: number) => `Running ${done}/${total}…`,
   runPassed: (passed: number, total: number) => `${passed} / ${total} passed`,
   runCompileError: 'Compile error',
+  /** The pill's tooltip after the code changed since the run. */
+  runEdited: 'You changed the code after this run.',
+  /** The Test view's line after the code changed since the run. */
+  runEditedLine: 'These results are from before your last edit.',
   testsNoFile: 'Open a source file to run tests.',
   runAll: 'Run all',
   runAllTip: 'Compile and run every case',

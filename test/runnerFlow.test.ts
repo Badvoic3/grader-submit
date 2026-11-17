@@ -258,6 +258,84 @@ describe('Runner', () => {
     expect(other).not.toHaveBeenCalled();
   });
 
+  describe('results older than the code', () => {
+    const edited = (r: Runner) => (r.summary() as { edited?: true }).edited === true;
+
+    it('typing in the program marks the results; undoing back to the same text clears the mark', async () => {
+      await store.add(P, { input: 'x', expected: 'x' });
+      const r = make(programs());
+      await r.onActiveFile();
+      await r.run();
+      expect(edited(r)).toBe(false);
+      emits = 0;
+      r.onTextChanged(file, () => 'int main() { return 1; }\n');
+      expect(r.summary()).toEqual({ kind: 'done', passed: 1, total: 1, edited: true });
+      expect(emits).toBe(1);
+      r.onTextChanged(file, () => 'int main() { return 2; }\n'); // still edited: no new render
+      expect(emits).toBe(1);
+      r.onTextChanged(file, () => 'int main() {}\n');
+      expect(edited(r)).toBe(false);
+      expect(emits).toBe(2);
+    });
+
+    it('another file, or a file no run was built from, changes nothing and is never read', async () => {
+      await store.add(P, { input: 'x', expected: 'x' });
+      const r = make(programs());
+      await r.onActiveFile();
+      const read = vi.fn(() => 'other');
+      r.onTextChanged(file, read); // no run yet
+      await r.run();
+      r.onTextChanged(join(dir, 'b.cpp'), read);
+      expect(read).not.toHaveBeenCalled();
+      expect(edited(r)).toBe(false);
+    });
+
+    it('running again after an edit clears the mark; running one case keeps it for the others', async () => {
+      const list = await store.add(P, { input: 'x', expected: 'x' });
+      await store.add(P, { input: 'y', expected: 'y' });
+      const r = make(programs());
+      await r.onActiveFile();
+      await r.run();
+      await writeFile(file, 'int main() { return 0; }\n'); // saved, as Run tests saves first
+      r.onTextChanged(file, () => 'int main() { return 0; }\n');
+      expect(edited(r)).toBe(true);
+      await r.run([list.cases[0].id]);
+      expect(edited(r)).toBe(true); // case 2's result is from the old code
+      await r.run();
+      expect(edited(r)).toBe(false);
+    });
+
+    it('a compile error from older code is marked too', async () => {
+      await store.add(P, { input: 'x', expected: 'x' });
+      const r = make(programs({ compile: (c) => { c.child.stderr.write("a.cpp:1:1: error: x\n"); setImmediate(() => c.child.finish(1)); } }));
+      await r.onActiveFile();
+      await r.run();
+      r.onTextChanged(file, () => 'fixed');
+      expect(r.summary()).toEqual({ kind: 'compile-error', edited: true });
+    });
+
+    it('folder mode: editing any source of the folder marks the results', async () => {
+      const pkg = join(dir, 'pkg');
+      await mkdir(pkg);
+      await writeFile(join(pkg, 'main.cpp'), '#include "student.h"\nint main() {}\n');
+      await writeFile(join(pkg, 'student.h'), 'int a;\n');
+      h.fileUri = uri(join(pkg, 'student.h'));
+      h.folder = {
+        link: { fsPath: pkg, entry: {} },
+        runUri: () => uri(join(pkg, 'main.cpp')),
+        askRole: async () => 'main.cpp',
+        compileFiles: async () => ({ sources: ['main.cpp'], leftOut: [] }),
+        sources: async () => ['main.cpp', 'student.h'],
+      };
+      await store.add(P, { input: 'x', expected: 'x' });
+      const r = make(programs());
+      await r.onActiveFile();
+      await r.run();
+      r.onTextChanged(join(pkg, 'student.h'), () => 'int a = 1;\n');
+      expect(edited(r)).toBe(true);
+    });
+  });
+
   it('folder mode: compiles the set, runs main while student.h is open, saves the whole folder', async () => {
     const pkg = join(dir, 'pkg');
     await mkdir(pkg);
@@ -270,6 +348,7 @@ describe('Runner', () => {
       runUri: () => uri(join(pkg, 'main.cpp')),
       askRole: async () => 'main.cpp',
       compileFiles: async () => ({ sources: ['main.cpp', 'util.cpp'], leftOut: ['gen.cpp'] }),
+      sources: async () => ['main.cpp', 'student.h', 'util.cpp'],
     };
     await store.add(P, { input: 'x', expected: 'x' });
     const save = vi.fn(async () => true);
@@ -467,7 +546,7 @@ describe('Runner', () => {
       const order: string[] = [];
       v.textDocuments = [{ uri: uri(file), isDirty: true, isUntitled: false, languageId: 'cpp', save: async () => (order.push('save'), true) }];
       await store.add(P, { input: 'a\n', expected: 'a\n' });
-      h.folder = { ...h.folder, link: { fsPath: dir }, compileFiles: async () => (order.push('read'), null) };
+      h.folder = { ...h.folder, link: { fsPath: dir }, compileFiles: async () => (order.push('read'), null), sources: async () => [] };
       await make(programs()).run();
       expect(order).toEqual(['save', 'read']);
     });
@@ -642,6 +721,13 @@ describe('summarize', () => {
     const st = s({ runs: new Map([done('a', 'AC')]) });
     expect(summarize(cases, st)).toEqual({ kind: 'done', passed: 1, total: 2 });
     expect(allPassed(summarize(cases, st))).toBe(false);
+  });
+  it('after an edit, done and compile error say so; the other pills never do', () => {
+    const changed = new Set(['k']);
+    expect(summarize(cases, s({ changed, runs: new Map([done('a', 'AC')]) }))).toEqual({ kind: 'done', passed: 1, total: 2, edited: true });
+    expect(summarize(cases, s({ changed, failure: { message: 'x', file: null, line: null } }))).toEqual({ kind: 'compile-error', edited: true });
+    expect(summarize(cases, s({ changed }))).toEqual({ kind: 'not-run' });
+    expect(summarize(cases, s({ changed, phase: 'compiling' }))).toEqual({ kind: 'compiling' });
   });
   it('a deleted case no longer counts', () => {
     expect(allPassed(summarize([{ id: 'a' }], s({ runs: new Map([done('a', 'AC'), done('gone', 'WA')]) })))).toBe(true);

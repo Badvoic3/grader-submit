@@ -3,7 +3,7 @@ import '../lang'; // first: the display language is set before any element is bu
 import { HOW_LINKED, W, W_SOURCE } from '../../src/shared/strings';
 import { scoreText } from '../../src/grader/score';
 import { appendChildren, el, icon } from '../dom';
-import { summaryPill } from '../runSummary';
+import { pillElement } from '../runSummary';
 import { matches } from '../filters';
 import type { ScoreView, ViewState } from '../../src/shared/messages';
 import { fillPrompt, promptNearSubmit } from './bars';
@@ -83,14 +83,13 @@ export function scoreCard(sc: ScoreView): HTMLElement {
 
 /** Run tests with its summary, then Open tests: for any open file, linked to a problem or not. */
 export function runRows(r: NonNullable<ViewState['runTests']>): HTMLElement {
-  const pill = summaryPill(r.summary);
   const reason = r.running ? null : r.disabledReason;
   return el('div', { class: 'run-rows' },
     el('div', { class: 'row' },
       r.running
         ? button([icon('debug-stop'), ` ${W.stopTests}`], () => send({ type: 'stopTests' }), { title: W.stopTestsTip })
         : button([icon('play', 'run-icon'), ` ${W.runTests}`], () => send({ type: 'runTests' }), { disabled: !!reason, title: reason ? `${W.runTestsTip} (${reason})` : W.runTestsTip }),
-      el('span', { class: `pill run-pill ${pill.tone}` }, pill.text),
+      pillElement(r.summary),
     ),
     button([icon('beaker'), ` ${r.testsOpen ? W.closeTests : W.openTests}`], () => send({ type: 'openTests' }), { title: r.testsOpen ? W.closeTests : W.openTestsTip }),
   );

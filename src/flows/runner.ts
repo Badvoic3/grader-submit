@@ -3,12 +3,12 @@ import { readdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { isAtOrInside } from '../mapping/paths';
+import { isAtOrInside, pathKey } from '../mapping/paths';
 import { Builder, buildRoot, type Program } from '../runner/compile';
 import { runCases } from '../runner/execute';
 import { detectRunnerLanguage, type RunnerLanguage, Toolchains } from '../runner/languages';
 import { nodeProcessApi } from '../runner/process';
-import { allPassed, emptyState, nextSampleTip, type RunState, sampleTipShown, summarize } from '../runner/state';
+import { allPassed, emptyState, nextSampleTip, noteText, type RunState, sampleTipShown, startBuild, summarize } from '../runner/state';
 import type { CaseList, CaseOwner, CaseRun, ProcessApi, RunLimits, RunnerCase, RunSummary } from '../runner/types';
 import { RUNNER } from '../shared/constants';
 import type { TestsHead, ViewState } from '../shared/messages';
@@ -23,6 +23,8 @@ interface RunTarget {
   /** The program first. */
   sources: string[];
   leftOut: string[];
+  /** Files whose edits make the results out of date: the folder's sources in folder mode, else the program. */
+  watch: string[];
 }
 
 const NO_CASES: readonly RunnerCase[] = [];
@@ -296,6 +298,8 @@ export class Runner {
       const st = this.state(target.owner);
       started = true;
       h.fun.activity();
+      const replacesAll = [...st.runs.keys()].every((id) => cases.some((c) => c.id === id));
+      startBuild(st, await this.textsOf(target.watch), replacesAll);
       for (const c of cases) st.runs.delete(c.id);
       Object.assign(st, { phase: 'compiling', failure: null, leftOut: target.leftOut, warnings: '' });
       this.changed(true);
@@ -322,6 +326,25 @@ export class Runner {
       this.active = null;
       if (started) await this.reload();
     }
+  }
+
+  /** The texts a run is built from, as saved on disk just before it (keyed by `pathKey`). */
+  private async textsOf(paths: readonly string[]): Promise<Map<string, string>> {
+    const read = await Promise.all(paths.map(async (p) => [pathKey(p), await readFile(p, 'utf8').catch(() => null)] as const));
+    return new Map(read.filter((r): r is readonly [string, string] => r[1] !== null));
+  }
+
+  /** The editor's text of a file changed: results built from other text are marked (`text` is read only when it matters). */
+  onTextChanged(path: string, text: () => string): void {
+    const key = pathKey(path);
+    let now: string | undefined;
+    let flipped = false;
+    for (const s of this.states.values()) {
+      if (!s.builtFrom.has(key)) continue;
+      now ??= text();
+      if (noteText(s, key, now)) flipped = true;
+    }
+    if (flipped) this.host.emit();
   }
 
   /** The main panel's Run tests: opens the split unless every case passed. */
@@ -460,6 +483,7 @@ export class Runner {
       folder,
       sources: set ? set.sources.map(abs) : [path],
       leftOut: set?.leftOut ?? [],
+      watch: link ? (await h.folder.sources(folder)).map(abs) : [path],
     };
   }
 

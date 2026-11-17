@@ -72,8 +72,8 @@ export type RunSummary =
   | { kind: 'not-run' }
   | { kind: 'compiling' }
   | { kind: 'running'; done: number; total: number }
-  | { kind: 'done'; passed: number; total: number }
-  | { kind: 'compile-error' };
+  | { kind: 'done'; passed: number; total: number; edited?: true }
+  | { kind: 'compile-error'; edited?: true };
 
 export interface CompileFailure {
   message: string;

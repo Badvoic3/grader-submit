@@ -297,6 +297,10 @@ export class GraderController implements vscode.Disposable {
       vscode.window.onDidChangeActiveTextEditor((e) => {
         if (e && e.document.uri.scheme === 'file') void this.setActiveFile(e.document.uri);
       }),
+      // Typing in a file a run was built from: its results are marked as older than the code.
+      vscode.workspace.onDidChangeTextDocument((e) => {
+        if (e.document.uri.scheme === 'file' && e.contentChanges.length) this.runner.onTextChanged(e.document.uri.fsPath, () => e.document.getText());
+      }),
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration('cedtGrader') || FROST_SETTINGS.some((k) => e.affectsConfiguration(k))) this.onConfigChanged();
       }),

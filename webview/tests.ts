@@ -7,7 +7,7 @@
 import './lang'; // first: sets the display language before anything below builds elements
 import { type Child, el, icon } from './dom';
 import { applyLook } from './look';
-import { summaryPill } from './runSummary';
+import { pillElement, summaryPill } from './runSummary';
 import { installTooltips } from './tooltip';
 import { diffOutputs, type DiffLine, plainLines } from '../src/runner/diff';
 import type { CaseRun, Captured } from '../src/runner/types';
@@ -121,7 +121,7 @@ function renderTop(h: TestsHead): void {
       el('strong', { class: 'name' }, h.title),
       h.problemId !== null ? el('span', { class: 'muted' }, `#${h.problemId}`) : null,
       el('span', { class: 'sp' }),
-      empty ? null : el('span', { class: `pill run-pill ${pill.tone}` }, pill.text),
+      empty ? null : pillElement(h.summary),
       close(),
     ),
   );
@@ -140,6 +140,7 @@ function renderTop(h: TestsHead): void {
       el('span', { class: 'limit' }, W.testsLimit(h.limits.timeMs / 1000, sizeOf(h.limits.memoryMB), h.limits.source === 'grader')),
     ),
   );
+  if (pill.edited && !empty) top.append(el('div', { class: 'limit' }, icon('edit'), ' ', W.runEditedLine));
   if (h.problemId === null) top.append(el('div', { class: 'limit' }, icon('debug-disconnect'), ' ', W.notLinkedToAProblem));
   if (h.leftOut.length) top.append(el('div', { class: 'limit' }, W.leftOut(h.leftOut.join(', '))));
   if (h.failure) {

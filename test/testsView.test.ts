@@ -85,7 +85,19 @@ describe('Test view', () => {
     expect(button('Reading…')!.disabled).toBe(true);
   });
 
-  it('a running list shows Stop and locks what would change the cases', () => {
+  it('results older than the code: a grey pill with a clock, and one line under the buttons', () => {
+    const { doc, post } = boot();
+    const line = () => [...doc.querySelectorAll('.limit')].map((l) => l.textContent?.trim()).find((t) => t?.startsWith('These results'));
+    post({ fresh: true, head: head({ summary: { kind: 'done', passed: 1, total: 2 } }), order: ['a', 'b'], cases: [kase('a'), kase('b')], runs: { a: done('a', 'AC'), b: done('b', 'WA') } });
+    expect(line()).toBeUndefined();
+    post({ head: head({ summary: { kind: 'done', passed: 1, total: 2, edited: true } }) });
+    const pill = doc.querySelector<HTMLElement>('.th .run-pill')!;
+    expect(pill.classList.contains('edited')).toBe(true);
+    expect(pill.dataset.tip).toBe('You changed the code after this run.');
+    expect(line()).toBe('These results are from before your last edit.');
+  });
+
+    it('a running list shows Stop and locks what would change the cases', () => {
     const { doc, sent, post, button, label } = boot();
     post({ fresh: true, head: head({ running: true, summary: { kind: 'running', done: 1, total: 2 } }), order: ['a', 'b'], cases: [kase('a'), kase('b')], runs: { a: done('a', 'AC'), b: { caseId: 'b', state: 'running' } } });
     expect(doc.querySelector('.run-pill')!.textContent).toBe('Running 1/2…');
