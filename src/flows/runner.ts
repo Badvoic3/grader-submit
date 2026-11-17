@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { readdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, isAbsolute, join } from 'node:path';
 import { isAtOrInside, pathKey } from '../mapping/paths';
 import { Builder, buildRoot, type Program } from '../runner/compile';
 import { runCases } from '../runner/execute';
@@ -208,6 +208,17 @@ export class Runner {
       const failedRuns = (await this.host.cases.read(o)).sampleTip?.failedRuns ?? 0;
       return this.host.cases.setMeta(o.problemId, { sampleTip: { failedRuns, dismissed: true } });
     });
+  }
+
+  /** Where the compile error is: the file the compiler named (relative ones from the program's folder), when it exists. */
+  failureLocation(): { path: string; line: number } | null {
+    const owner = this.owner();
+    const f = owner ? this.state(owner).failure : null;
+    if (!f?.file || !f.line) return null;
+    const run = this.host.folder.runUri();
+    const base = this.host.folder.link?.fsPath ?? (run ? dirname(run.fsPath) : null);
+    const path = isAbsolute(f.file) ? f.file : base ? join(base, f.file) : null;
+    return path && existsSync(path) ? { path, line: f.line } : null;
   }
 
   failureText(): string | null {

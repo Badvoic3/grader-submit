@@ -305,7 +305,21 @@ describe('Runner', () => {
       expect(edited(r)).toBe(false);
     });
 
-    it('a compile error from older code is marked too', async () => {
+    it('Go to line: the file the compiler named, also a relative one; nothing for a file that is gone', async () => {
+      await store.add(P, { input: 'x', expected: 'x' });
+      const fail = (where: string) => programs({ compile: (c) => { c.child.stderr.write(`${where}:3:1: error: x\n`); setImmediate(() => c.child.finish(1)); } });
+      let r = make(fail(file));
+      await r.run();
+      expect(r.failureLocation()).toEqual({ path: file, line: 3 });
+      r = make(fail('a.cpp'));
+      await r.run();
+      expect(r.failureLocation()).toEqual({ path: file, line: 3 });
+      r = make(fail('gone.cpp'));
+      await r.run();
+      expect(r.failureLocation()).toBeNull();
+    });
+
+        it('a compile error from older code is marked too', async () => {
       await store.add(P, { input: 'x', expected: 'x' });
       const r = make(programs({ compile: (c) => { c.child.stderr.write("a.cpp:1:1: error: x\n"); setImmediate(() => c.child.finish(1)); } }));
       await r.onActiveFile();

@@ -67,13 +67,14 @@ describe('TestPanel', () => {
     failureText: vi.fn(() => null),
     dismissSampleTip: vi.fn(async () => {}),
   };
-  const tests = { loadTestcases: vi.fn(async () => {}), loadSampleCases: vi.fn(async () => {}) };
+  const tests = { loadTestcases: vi.fn(async () => {}), loadSampleCases: vi.fn(async () => {}), noticeAction: vi.fn(async () => {}), dismissNotice: vi.fn() };
+  const goToError = vi.fn(async () => {});
   let shared: number | undefined;
   const compare = vi.fn(async () => {});
   const openStatement = vi.fn(async () => {});
   let look = PLAIN_LOOK;
   const make = () =>
-    new TestPanel('ext' as never, { look: () => look, runner: () => runner as never, tests: () => tests as never, sharedColumn: () => shared, started: Promise.resolve(), changed: () => {}, compare, openStatement, webviewError: vi.fn(), log: () => {} });
+    new TestPanel('ext' as never, { look: () => look, runner: () => runner as never, tests: () => tests as never, sharedColumn: () => shared, started: Promise.resolve(), changed: () => {}, compare, openStatement, goToError, webviewError: vi.fn(), log: () => {} });
   const send = async (m: unknown) => {
     v.onMessage(m);
     await new Promise((done) => setImmediate(done));
@@ -220,6 +221,14 @@ describe('TestPanel', () => {
     expect(tests.loadTestcases).toHaveBeenCalledWith(false);
     await send({ type: 'loadSamples' });
     expect(tests.loadSampleCases).toHaveBeenCalled();
+    await send({ type: 'goToError' });
+    expect(goToError).toHaveBeenCalled();
+    await send({ type: 'noticeAction', id: 4 });
+    expect(tests.noticeAction).toHaveBeenCalledWith(4);
+    await send({ type: 'dismissNotice', id: 4 });
+    expect(tests.dismissNotice).toHaveBeenCalledWith(4);
+    await send({ type: 'dismissNotice', id: 'x' }); // not a number: ignored
+    expect(tests.dismissNotice).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -52,7 +52,7 @@ import { KEYS } from './shared/stateKeys';
 import { SecretLedger, type SecretKind, secretKey } from './shared/secrets';
 import { cleanTagFilter, cleanTopicFilter, otherTags } from './shared/tags';
 import { currentLang, resolveLang, setLanguage } from './shared/i18n';
-import type { CelebrateView, FocusTarget, HistoryEntry, ProblemFilter, ProblemView, SubmissionDetailView, TrophiesView, ViewState } from './shared/messages';
+import type { CelebrateView, FocusTarget, HistoryEntry, ProblemFilter, ProblemView, ResultView, SubmissionDetailView, TrophiesView, ViewState } from './shared/messages';
 import { Attachments } from './flows/attachments';
 import { CacheCare } from './flows/cache';
 import { ExplorerBadges } from './flows/explorerBadges';
@@ -276,6 +276,10 @@ export class GraderController implements vscode.Disposable {
         if (t) await this.compareDocs.open(S.compareTab(t.n), t.expected, t.actual, this.codeColumn() ?? vscode.ViewColumn.One);
       },
       openStatement: () => this.openStatement(),
+      goToError: async () => {
+        const at = this.runner.failureLocation();
+        if (at) await this.openAtLine(vscode.Uri.file(at.path), at.line);
+      },
       started: this.started,
       changed: () => this.emit(),
       webviewError: (message, stack) => this.crash.panelError(message, stack),
@@ -891,7 +895,7 @@ export class GraderController implements vscode.Disposable {
       },
       connection: this.connection,
       submit: { enabled, busy, reason, label: S.submitLabel },
-      result: results.get(target?.fsPath) ?? null,
+      result: this.resultView(results.get(target?.fsPath)),
       celebrate: this.celebration,
       trophies: this.trophies(),
       gradingElsewhere: busy && gradingFile !== null && gradingFile !== target?.fsPath ? (results.get(gradingFile)?.problemName ?? S.submit.anotherFile) : null,
@@ -1582,6 +1586,30 @@ export class GraderController implements vscode.Disposable {
   submit = () => this.submitFlow.submit();
   showLastResult = () => this.submitFlow.showLastResult();
   showCompilerMessage = () => this.submitFlow.showCompilerMessage();
+
+  /** The Result card's Go to line: the grader's compile error, in the file that was submitted. */
+  async goToCompileError(): Promise<void> {
+    const target = this.folder.targetUri();
+    const line = this.resultView(this.submitFlow.results.get(target?.fsPath))?.errorLine;
+    if (target && line) await this.openAtLine(target, line);
+  }
+
+  /** The Result card, with the compile error's line when the grader's message names one. */
+  private resultView(r: ResultView | undefined): ResultView | null {
+    if (!r) return null;
+    return r.compileError ? { ...r, errorLine: this.client.submittedErrorLine(r.compilerMessage) } : r;
+  }
+
+  /** Open a file in the code's group with the cursor at the start of `line` (1-based). The user asked, so it takes focus. */
+  private async openAtLine(uri: vscode.Uri, line: number): Promise<void> {
+    try {
+      const doc = await vscode.workspace.openTextDocument(uri);
+      const at = new vscode.Position(Math.min(Math.max(line - 1, 0), Math.max(doc.lineCount - 1, 0)), 0);
+      await vscode.window.showTextDocument(doc, { viewColumn: this.codeColumn() ?? vscode.ViewColumn.One, selection: new vscode.Range(at, at) });
+    } catch (err) {
+      void this.tellInline(err, S.runner.cantOpen(uri.fsPath));
+    }
+  }
   clearCachedData = () => this.cache.clear();
 
   // ---------------------------------------------------------------- history

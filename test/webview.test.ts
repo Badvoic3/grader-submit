@@ -1520,6 +1520,16 @@ describe.runIf(existsSync(resolve(__dirname, '../esbuild.mjs')))('sidebar webvie
     expect(doc.querySelector('.compiler pre')!.textContent).toBe('a.cpp:1: error: <script>');
     expect(doc.querySelector('script')).toBeNull();
   });
+  it('a compile error with a line in the submitted file offers Go to line beside Open in editor', () => {
+    const { doc, post, sent } = boot();
+    const buttons = () => [...doc.querySelectorAll<HTMLButtonElement>('.compiler button')].map((b) => b.textContent?.trim());
+    post({ ...loggedIn, result: { ...loggedIn.result!, points: 0, verdicts: [], compileError: true, compilerMessage: 'x', errorLine: null } });
+    expect(buttons()).toEqual(['Open in editor']);
+    post({ ...loggedIn, result: { ...loggedIn.result!, points: 0, verdicts: [], compileError: true, compilerMessage: 'a.cpp:7:3: error: x', errorLine: 7 } });
+    expect(buttons()).toEqual(['Go to line 7', 'Open in editor']);
+    [...doc.querySelectorAll<HTMLButtonElement>('.compiler button')][0].click();
+    expect(sent.at(-1)).toEqual({ type: 'goToCompileError' });
+  });
   describe('crash report card', () => {
     const report = 'Extension: 1.0.1\nWhere: command submit\nTypeError: <img src=x onerror=alert(1)>';
 

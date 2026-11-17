@@ -93,6 +93,8 @@ export interface ResultView {
   verdicts: VerdictView[];
   compileError: boolean;
   compilerMessage: string | null;
+  /** A compile error's line in the submitted file ("Go to line"); filled when the panel shows it. */
+  errorLine?: number | null;
   /** e.g. "Counted score improved: 40 → 70." */
   improvement: string | null;
   /** Human readable status or error text. */
@@ -342,6 +344,7 @@ export type FromWebview =
   | { type: 'crashAction'; id: number; action: 'open' | 'dismiss' }
   | { type: 'webviewError'; message: string; stack: string }
   | { type: 'showCompilerMessage' }
+  | { type: 'goToCompileError' }
   | { type: 'openSettings' }
   | { type: 'openUserGuide' }
   | { type: 'openTroubleshooting' };
@@ -414,6 +417,7 @@ export type FromTests =
   | { type: 'close' }
   | { type: 'loadTestcases' }
   | { type: 'loadSamples' }
+  | { type: 'goToError' }
   | { type: 'noticeAction'; id: number }
   | { type: 'dismissNotice'; id: number }
   | { type: 'webviewError'; message: string; stack: string };

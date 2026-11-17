@@ -79,6 +79,8 @@ export interface GraderProvider {
   url(path: string): string;
   /** One verdict per test from a submission's comment; `[]` when it is plain text. */
   parseVerdicts(comment: string | null | undefined): Verdict[];
+  /** The line of the first compile error in the submitted file, from a submission's compiler message; null when none is found. */
+  submittedErrorLine(compilerMessage: string | null | undefined): number | null;
   restore(): Promise<boolean>;
   login(creds?: Credentials): Promise<GraderUser>;
   logout(): Promise<void>;

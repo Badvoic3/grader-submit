@@ -51,7 +51,10 @@ export function renderResult(s: ViewState): void {
       el('details', { class: 'compiler', open: true },
         el('summary', {}, W.compilerMessage),
         el('pre', {}, r.compilerMessage || W.empty),
-        button([icon('go-to-file'), ' ', W.openInEditor], () => send({ type: 'showCompilerMessage' })),
+        el('div', { class: 'row gap' },
+          r.errorLine ? button([icon('go-to-file'), ' ', W.goToLine(r.errorLine)], () => send({ type: 'goToCompileError' })) : null,
+          button([icon('go-to-file'), ' ', W.openInEditor], () => send({ type: 'showCompilerMessage' })),
+        ),
       ),
     );
   }

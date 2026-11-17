@@ -150,6 +150,7 @@ function renderTop(h: TestsHead): void {
         el('div', { class: 'oc-h' },
           el('strong', {}, W.runCompileError),
           el('span', { class: 'sp' }),
+          h.failure.line ? el('button', { class: 'link small', type: 'button', onclick: () => send({ type: 'goToError' }) }, icon('go-to-file'), ' ', W.goToLine(h.failure.line)) : null,
           iconButton('copy', W.copyError, () => send({ type: 'copyFailure' })),
         ),
         el('pre', { class: 'err-text' }, h.failure.message),

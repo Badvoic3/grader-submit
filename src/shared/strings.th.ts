@@ -17,7 +17,7 @@ import type { Strings } from './strings';
  * Everything else was reviewed at checkpoint B (2026-11-03). Add keys here
  * when a new text is translated without review.
  */
-export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun', 'G.statusBar.compileError', 'S.migration.noticeDetail', 'W.runEdited', 'W.runEditedLine', 'W.downloadAgain'];
+export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun', 'G.statusBar.compileError', 'S.migration.noticeDetail', 'W.runEdited', 'W.runEditedLine', 'W.downloadAgain', 'W.goToLine', 'S.runner.cantOpen'];
 
 export const TH: Strings = {
   HOW_LINKED: {
@@ -278,6 +278,7 @@ export const TH: Strings = {
       noFile: 'เปิดไฟล์ source ก่อนจึงจะรันทดสอบได้',
       saveFailed: (why) => `บันทึก test case ไม่สำเร็จ: ${why}`,
       noLanguage: 'ระบุภาษาของไฟล์นี้ไม่ได้',
+      cantOpen: (path) => `เปิด ${path} ไม่ได้`,
     },
     runTests: {
       noCases: 'เพิ่มหรือโหลด test case ก่อน',
@@ -471,6 +472,7 @@ export const TH: Strings = {
     compilerMessage: 'ข้อความจากคอมไพเลอร์',
     empty: '(ว่างเปล่า)',
     openInEditor: 'เปิดในเอดิเตอร์',
+    goToLine: (line) => `ไปที่บรรทัด ${line}`,
     testsPassed: (passed, total) => `ผ่าน ${passed} จาก ${total} เคส`,
     maxTime: 'เวลาสูงสุด',
     peakMemory: 'หน่วยความจำสูงสุด',

@@ -37,6 +37,8 @@ export class TestPanel implements vscode.Disposable {
       changed: () => void;
       compare: (caseId: string) => Promise<void>;
       openStatement: () => Promise<void>;
+      /** The compile error's line in the editor. */
+      goToError: () => Promise<void>;
       webviewError: (message: string, stack: string) => void;
       log: (msg: string) => void;
     },
@@ -187,6 +189,9 @@ export class TestPanel implements vscode.Disposable {
         return;
       case 'openStatement':
         await this.opts.openStatement();
+        return;
+      case 'goToError':
+        await this.opts.goToError();
         return;
       case 'dismissTip':
         await r.dismissSampleTip();

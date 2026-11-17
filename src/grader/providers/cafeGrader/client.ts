@@ -23,6 +23,7 @@ import { isFinalStatus } from '../../provider';
 import type { Credentials, GraderCapabilities, GraderProvider, GraderProviderOptions, PollOptions, ProblemList } from '../../provider';
 
 import { ATTACHMENT, DEFAULT_BASE_URL, STATEMENT, TIMING } from '../../../shared/constants';
+import { submittedErrorLine } from './compileMessage';
 
 const MIN_POLL_MS = TIMING.pollMinMs;
 const DEFAULT_POLL_MS = TIMING.pollDefaultMs;
@@ -92,6 +93,10 @@ export class GraderClient implements GraderProvider {
       this.webSession ??= new WebSession(this.baseUrl, this.opts.fetch, this.log, this.redactor);
     }
     return this.webSession;
+  }
+
+  submittedErrorLine(compilerMessage: string | null | undefined): number | null {
+    return submittedErrorLine(compilerMessage);
   }
 
   parseVerdicts(comment: string | null | undefined): Verdict[] {

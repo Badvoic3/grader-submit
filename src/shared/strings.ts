@@ -279,6 +279,7 @@ const EN_S = {
     noFile: 'Open a source file to run tests.',
     saveFailed: (why: string) => `Couldn't save the test cases: ${why}`,
     noLanguage: "Can't tell which language this file is.",
+    cantOpen: (path: string) => `Couldn't open ${path}.`,
   },
   runTests: {
     noCases: 'add or load test cases first',
@@ -476,6 +477,8 @@ const EN_W = {
   compilerMessage: "Compiler message",
   empty: "(empty)",
   openInEditor: "Open in editor",
+  /** Compile errors (Result card and Test view): put the cursor on the error's line. */
+  goToLine: (line: number) => `Go to line ${line}`,
   testsPassed: (passed: string | number, total: string | number) => `${passed} of ${total} tests passed`,
   maxTime: "Max time",
   peakMemory: "Peak memory",

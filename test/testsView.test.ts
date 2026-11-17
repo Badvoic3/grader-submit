@@ -85,7 +85,16 @@ describe('Test view', () => {
     expect(button('Reading…')!.disabled).toBe(true);
   });
 
-  it('a Load result shows under the buttons: Dismiss, and the action where there is one', () => {
+  it('a compile error with a line offers Go to line; one without says nothing more', () => {
+    const { sent, post, button } = boot();
+    post({ fresh: true, head: head({ summary: { kind: 'compile-error' }, failure: { message: 'a.cpp:7:3: error: x', file: 'a.cpp', line: 7 } }), order: ['a'], cases: [kase('a')] });
+    button('Go to line 7')!.click();
+    expect(sent.at(-1)).toEqual({ type: 'goToError' });
+    post({ head: head({ summary: { kind: 'compile-error' }, failure: { message: 'ld: x', file: null, line: null } }) });
+    expect(button('Go to line')).toBeUndefined();
+  });
+
+    it('a Load result shows under the buttons: Dismiss, and the action where there is one', () => {
     const { doc, sent, post, button } = boot();
     post({ fresh: true, head: head({ notice: { id: 3, tone: 'ok', text: 'Loaded 4 sample cases from the statement.', action: null } }), order: ['a'], cases: [kase('a')] });
     const box = () => doc.querySelector<HTMLElement>('.notice[role="status"]');
