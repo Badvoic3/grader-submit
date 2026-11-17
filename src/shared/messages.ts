@@ -323,8 +323,6 @@ export type FromWebview =
   | { type: 'newFile'; problemId: number }
   | { type: 'goToFile'; problemId: number }
   | { type: 'findFile'; problemId: number }
-  | { type: 'loadTestcases' }
-  | { type: 'loadSampleCases' }
   | { type: 'confirmProblem'; problemId: number }
   | { type: 'setFilter'; filter: ProblemFilter }
   | { type: 'autoDetect' }
