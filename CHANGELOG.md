@@ -5,6 +5,9 @@
 ### Test view
 - **The input always shows** on every case, passed or failed (it used to fold away once a case had run). Its fold still closes it.
 - **A passed case shows one Output block** instead of Expected and Actual side by side. A failed case still shows both, with the differences marked.
+- **Results older than your code are marked:** after you edit the file (or any source of a linked folder), the run summary turns grey with a clock, in the panel and in the Tests view, and the Tests view says the results are from before your last edit. Undoing back to the same code, or running again, clears it.
+- **Load results show in the Tests view:** pressing **Load test cases** or **Load samples** there shows what was loaded, or what went wrong, right under the buttons (with **Open statement** or **Download again** where it helps), instead of a pop-up.
+- **Go to line for compile errors:** a compile error has a **Go to line** button, in the Tests view for your compiler and on the Result card for the grader's.
 
 ### Take a break
 - **Swarm stays with a resting mouse:** your code now swirls around the cursor for as long as it rests in the tab, and starts to wander only once the cursor leaves (the 5-second idle timer is gone).
