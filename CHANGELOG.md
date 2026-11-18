@@ -9,6 +9,9 @@
 - **Load results show in the Tests view:** pressing **Load test cases** or **Load samples** there shows what was loaded, or what went wrong, right under the buttons (with **Open statement** or **Download again** where it helps), instead of a pop-up.
 - **Go to line for compile errors:** a compile error has a **Go to line** button, in the Tests view for your compiler and on the Result card for the grader's.
 
+### Statements
+- **pdf.js 6:** the statement viewer and **Load samples** now use pdf.js 6.5 (it was 4.10, which no longer gets fixes). Images in scanned statements (JPEG 2000, JBIG2) are decoded by pdf.js's newer decoders, CMYK colours use a colour profile, and **Load samples** reads more statements correctly (on statements drawn with shaded cells it used to find nothing, or cut text short).
+
 ### Take a break
 - **Swarm stays with a resting mouse:** your code now swirls around the cursor for as long as it rests in the tab, and starts to wander only once the cursor leaves (the 5-second idle timer is gone).
 
