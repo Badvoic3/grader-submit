@@ -38,6 +38,7 @@ input.page { width: 3.5em; text-align: right; }
 input.search { flex: 1 1 auto; min-width: 0; }
 .matches { padding-left: 4px; }
 #viewerContainer { position: absolute; top: var(--toolbar-height, 32px); left: 0; right: 0; bottom: 0; overflow: auto; outline: none; }
+#viewerContainer:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; } /* reached with Tab: the same ring as the toolbar */
 #viewerContainer .pdfViewer .page { margin: 8px auto; border: none; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
 .text-view { position: absolute; top: var(--toolbar-height, 32px); left: 0; right: 0; bottom: 0; overflow: auto; padding: 12px 20px; line-height: 1.55; }
 .text-view pre.text { white-space: pre-wrap; font-family: var(--vscode-font-family); }
