@@ -16,7 +16,7 @@
 export const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
 /** How a file is linked to a problem (lower case, used inside sentences). */
-const EN_HOW_LINKED = {
+export const EN_HOW_LINKED = {
   chosen: 'chosen by you',
   filename: 'matched by file name',
   folder: 'matched by folder name',
@@ -374,7 +374,7 @@ const EN_S = {
 // ================================================================ webviews
 
 /** Sidebar and statement viewer texts (webview/*.ts). */
-const EN_W = {
+export const EN_W = {
   ago: {
     justNow: 'just now',
     minAgo: (m: number) => `${m} min ago`,
@@ -707,7 +707,7 @@ const EN_W = {
 } as const;
 
 /** Match line under the problem selector. */
-const EN_W_SOURCE = {
+export const EN_W_SOURCE = {
   saved: 'Chosen by you',
   filename: 'Matched by file name',
   folder: 'Matched by folder name',
@@ -717,7 +717,7 @@ const EN_W_SOURCE = {
 // ================================================================ grader / host modules
 
 /** Connection banner, grader errors, status bar, statement panel, score lines. */
-const EN_G = {
+export const EN_G = {
   /** Verdict words, as on the website (`config/locales/en.yml`), by evaluation kind. */
   verdict: {
     waiting: 'Judging',
@@ -849,11 +849,12 @@ function copy<T>(v: T): T {
   return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, copy(x)])) as T;
 }
 
-// Live tables (English until `setLanguage` says otherwise).
-export const HOW_LINKED: Strings['HOW_LINKED'] = copy(EN.HOW_LINKED);
-export const PICK_HOW: Strings['PICK_HOW'] = copy(EN.PICK_HOW);
-export const S: Strings['S'] = copy(EN.S);
-export const W: Strings['W'] = copy(EN.W);
-export const W_SOURCE: Strings['W_SOURCE'] = copy(EN.W_SOURCE);
-export const G: Strings['G'] = copy(EN.G);
-export const MATCH_SOURCE: Strings['MATCH_SOURCE'] = copy(EN.MATCH_SOURCE);
+// Live tables (English until `setLanguage` says otherwise). Each is made from its own section and marked pure,
+// so a bundle that never reads one (the webviews never read `S`) leaves it and its texts out.
+export const HOW_LINKED: Strings['HOW_LINKED'] = /* @__PURE__ */ copy(EN_HOW_LINKED);
+export const PICK_HOW: Strings['PICK_HOW'] = /* @__PURE__ */ copy(EN_PICK_HOW);
+export const S: Strings['S'] = /* @__PURE__ */ copy(EN_S);
+export const W: Strings['W'] = /* @__PURE__ */ copy(EN_W);
+export const W_SOURCE: Strings['W_SOURCE'] = /* @__PURE__ */ copy(EN_W_SOURCE);
+export const G: Strings['G'] = /* @__PURE__ */ copy(EN_G);
+export const MATCH_SOURCE: Strings['MATCH_SOURCE'] = /* @__PURE__ */ copy(EN_MATCH_SOURCE);
