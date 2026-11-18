@@ -481,3 +481,22 @@ describe('webview CSPs: WebAssembly only where pdf.js needs it, eval nowhere', (
   });
 });
 
+
+describe('a zip that understates its sizes stays within the caps', () => {
+  /** One entry of `size` zeros whose headers claim `claimed` bytes. */
+  const lying = (size: number, claimed: number): Uint8Array => {
+    const z = zipSync({ 'main.cpp': new Uint8Array(size) }, { level: 9 });
+    const dv = new DataView(z.buffer, z.byteOffset, z.byteLength);
+    dv.setUint32(22, claimed, true); // local header: uncompressed size
+    for (let i = z.length - 22; i >= 0; i--) if (dv.getUint32(i, true) === 0x02014b50) { dv.setUint32(i + 24, claimed, true); break; }
+    return z;
+  };
+  it('the caps count the claimed size, and no more than that is ever kept', () => {
+    // 64 MB of zeros in a ~64 KB zip that says 10 bytes: the output is the claimed size, never the real one.
+    const plan = planZip(lying(64 * 1024 * 1024, 10));
+    expect(plan.files.map((f) => f.data.length)).toEqual([10]);
+  });
+  it('a claim over the total cap is refused before anything is inflated', () => {
+    expect(() => planZip(lying(1024, ATTACHMENT.maxTotalBytes + 1))).toThrow(S.attachment.tooBig(Math.round(ATTACHMENT.maxTotalBytes / 1048576)));
+  });
+});
