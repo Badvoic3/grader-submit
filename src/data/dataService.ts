@@ -202,6 +202,11 @@ export class DataService {
     return this.run(key, () => this.cache.get(key, HISTORY, () => this.opts.client().listSubmissions(problemId), force));
   }
 
+  /** Drop a problem's cached history without fetching it: the next look at it asks the grader again. */
+  forgetHistory(problemId: number): void {
+    this.cache.invalidate(historyKey(problemId));
+  }
+
   /** Full detail, on demand. Cached forever once final; in-progress ones are always refetched. */
   async loadDetail(id: number): Promise<SubmissionDetail | undefined> {
     const key = detailKey(id);

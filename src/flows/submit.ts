@@ -230,7 +230,8 @@ export class SubmitFlow {
   private async pollAndFinish(key: string, problem: Problem, submissionId: number, countedBefore: number | null): Promise<void> {
     const h = this.host;
     const final = await this.poll(key, problem, submissionId);
-    if (!final) return;
+    // Stopped or timed out: the cached history has no row for this submission yet, and "Show Last Result" reads it.
+    if (!final) return h.data.forgetHistory(problem.id);
     this.pendingPoll = null;
     h.connectionOk();
     h.data.recordDetail(final);

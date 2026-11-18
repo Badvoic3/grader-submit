@@ -53,3 +53,20 @@ describe('a final verdict', () => {
     expect(boundary).toHaveBeenCalledWith('verdict-pass');
   });
 });
+
+describe('a poll that stops before the verdict', () => {
+  // "Stopped waiting. Use Show Last Result" (Cancel, or the 3-minute limit): the cached history has no row for the
+  // submission yet, so Show Last Result would show the one before it. Seen in real VS Code (checklist §6).
+  it('forgets the cached history, so Show Last Result finds the new submission', async () => {
+    const A = problem(1, 40);
+    const forgetHistory = vi.fn(), afterSubmit = vi.fn();
+    const host = { connectionOk() {}, data: { recordDetail() {}, afterSubmit, forgetHistory }, emit() {} };
+    const flow = new SubmitFlow(host as never);
+    flow.results.set('a.cpp', newResult(A, 'grading', ''));
+    const internals = flow as unknown as { poll(): Promise<unknown>; pollAndFinish(k: string, p: unknown, id: number, before: number | null): Promise<void> };
+    internals.poll = async () => null;
+    await internals.pollAndFinish('a.cpp', A, 9, 40);
+    expect(forgetHistory).toHaveBeenCalledWith(1);
+    expect(afterSubmit).not.toHaveBeenCalled(); // no request now: only the next look at the history fetches it
+  });
+});

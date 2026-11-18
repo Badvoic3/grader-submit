@@ -11,6 +11,9 @@
 
 - **`Grader: Open Tests` always opens the Tests view:** run from the Command Palette or a key binding while the view was showing, it used to close it. The panel's **Open tests** / **Close tests** button still does both.
 
+### Submitting
+- **Show Last Result after you stop waiting:** pressing **Cancel** on the "Grading …" notification (or waiting past 3 minutes) said to use **Show Last Result**, which then showed the submission before it. It now shows the one you just sent.
+
 ### Keyboard and screen readers
 - **Arrow keys in the problem filters:** the status filter (All / Unsolved / In progress / Solved) and the tags' Any / All are one Tab stop each; the arrow keys, Home and End move to another choice and pick it, and focus stays on it.
 - **The statement's pages show a focus ring** when you reach them with Tab, like every other control, and have a name for screen readers.

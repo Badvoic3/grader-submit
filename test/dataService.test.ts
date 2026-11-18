@@ -68,6 +68,16 @@ describe('cache freshness', () => {
     expect(api(HISTORY_201)).toBe(2);
   });
 
+  it('forgetHistory sends nothing, keeps the rows to show, and the next load asks again', async () => {
+    const { data, api } = await setup();
+    await data.loadHistory(201);
+    data.forgetHistory(201);
+    expect(api(HISTORY_201)).toBe(1);
+    expect(data.history(201)?.length).toBe(1);
+    await data.loadHistory(201);
+    expect(api(HISTORY_201)).toBe(2);
+  });
+
   it('problem list and languages are cached for the session', async () => {
     const { data, api, tick } = await setup();
     await data.loadProblems();
