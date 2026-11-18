@@ -1,7 +1,7 @@
 // Bundles the extension host (dist/extension.js) and the sidebar webview
 // (media/dist/webview.js + css + codicons). Usage: node esbuild.mjs [--watch] [--production]
 import { context } from 'esbuild';
-import { copyFile, cp, mkdir, rm } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, rm } from 'node:fs/promises';
 
 const watch = process.argv.includes('--watch');
 const production = process.argv.includes('--production');
@@ -45,10 +45,22 @@ const copyAssets = {
       await mkdir('media/dist/pdfjs', { recursive: true });
       await copyFile(`${pdfjs}/legacy/build/pdf.worker.min.mjs`, 'media/dist/pdfjs/pdf.worker.min.mjs');
       await copyFile(`${pdfjs}/legacy/web/pdf_viewer.css`, 'media/dist/pdfjs/pdf_viewer.css');
-      await cp(`${pdfjs}/legacy/web/images`, 'media/dist/pdfjs/images', { recursive: true });
+      // Only the icons pdf_viewer.css uses (pdf.js 6 ships 83, the stylesheet names 32).
+      await mkdir('media/dist/pdfjs/images', { recursive: true });
+      const css = await readFile(`${pdfjs}/legacy/web/pdf_viewer.css`, 'utf8');
+      for (const name of new Set([...css.matchAll(/images\/([\w.-]+)/g)].map((m) => m[1]))) {
+        await copyFile(`${pdfjs}/legacy/web/images/${name}`, `media/dist/pdfjs/images/${name}`);
+      }
       // No CMaps (pdf.js character maps, ~1 MB): only PDFs with non-embedded CJK fonts need them; course
       // statements embed their fonts (decided 2026-11-04).
       await cp(`${pdfjs}/standard_fonts`, 'media/dist/pdfjs/standard_fonts', { recursive: true });
+      // pdf.js 6 decodes JPEG 2000 and JBIG2 images and ICC colours with WebAssembly (the statement viewer's
+      // wasmUrl / iccUrl). Not packed: the no-WebAssembly fallbacks and quickjs (PDF scripting, never enabled).
+      await mkdir('media/dist/pdfjs/wasm', { recursive: true });
+      for (const f of ['openjpeg.wasm', 'jbig2.wasm', 'qcms_bg.wasm', 'LICENSE_OPENJPEG', 'LICENSE_PDFJS_OPENJPEG', 'LICENSE_JBIG2', 'LICENSE_PDFJS_JBIG2', 'LICENSE_QCMS', 'LICENSE_PDFJS_QCMS']) {
+        await copyFile(`${pdfjs}/wasm/${f}`, `media/dist/pdfjs/wasm/${f}`);
+      }
+      await cp(`${pdfjs}/iccs`, 'media/dist/pdfjs/iccs', { recursive: true });
     });
   },
 };

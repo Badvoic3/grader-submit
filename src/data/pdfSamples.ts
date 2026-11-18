@@ -24,7 +24,6 @@ interface PageLike {
 interface DocLike {
   numPages: number;
   getPage(n: number): Promise<PageLike>;
-  destroy(): Promise<void>;
 }
 interface RawItem {
   str?: string;
@@ -36,7 +35,7 @@ interface RawItem {
 
 /** The parts of the pdf.js module used here. */
 export interface Pdfjs {
-  getDocument(src: { data: Uint8Array; isEvalSupported: boolean; verbosity: number; isOffscreenCanvasSupported: boolean }): { promise: Promise<DocLike>; destroy?(): Promise<void> };
+  getDocument(src: { data: Uint8Array; verbosity: number; isOffscreenCanvasSupported: boolean }): { promise: Promise<DocLike>; destroy(): Promise<void> };
   OPS: PathOps;
   GlobalWorkerOptions: { workerSrc: string };
 }
@@ -121,12 +120,13 @@ export async function readSampleTables(
     }
   };
   // A copy: pdf.js may detach the buffer it is given.
-  const task = pdfjs.getDocument({ data: bytes.slice(), isEvalSupported: false, verbosity: 0, isOffscreenCanvasSupported: false });
+  // No wasmUrl: the image decoders aren't needed to find tables, and an image pdf.js can't decode is skipped.
+  const task = pdfjs.getDocument({ data: bytes.slice(), verbosity: 0, isOffscreenCanvasSupported: false });
   let doc: DocLike;
   try {
     doc = await inTime(task.promise);
   } catch (err) {
-    void task.destroy?.().catch(() => {});
+    void task.destroy().catch(() => {});
     throw err;
   }
   try {
@@ -155,6 +155,6 @@ export async function readSampleTables(
     }
     return samplesFrom(tables);
   } finally {
-    await doc.destroy();
+    await task.destroy(); // pdf.js 6: the document is freed through its loading task
   }
 }

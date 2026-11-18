@@ -3,9 +3,9 @@
  * the grader, attachments, statements and `.cedt-grader.json`. The inputs are
  * the reviewer's probe inputs (H1, M1, M2, L1–L9). No network: fake fetch.
  */
-import { mkdtempSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { readSampleTables, SampleReadLimitError, type Pdfjs } from '../src/data/pdfSamples';
@@ -390,7 +390,8 @@ describe('L4: .cedt-grader.json entries outside the workspace are ignored', () =
 
 function fakePdfjs(doc: { numPages: number; getPage: (n: number) => Promise<never> | Promise<unknown> }, destroyed: { doc: boolean }): Pdfjs {
   return {
-    getDocument: () => ({ promise: Promise.resolve({ ...doc, destroy: async () => void (destroyed.doc = true) }) }),
+    // pdf.js 6: the document is freed through its loading task.
+    getDocument: () => ({ promise: Promise.resolve({ ...doc }), destroy: async () => void (destroyed.doc = true) }),
     OPS: {} as Pdfjs['OPS'],
     GlobalWorkerOptions: { workerSrc: '' },
   } as unknown as Pdfjs;
@@ -470,3 +471,13 @@ describe('L9: saved passwords and tokens of earlier users / addresses are remove
     expect(ledger.written()).toEqual([]);
   });
 });
+
+describe('webview CSPs: WebAssembly only where pdf.js needs it, eval nowhere', () => {
+  const src = (f: string) => readFileSync(resolve(__dirname, '..', f), 'utf8');
+  it("only the statement tab allows compiling WebAssembly (pdf.js 6's image decoders), and no page allows eval", () => {
+    expect(src('src/ui/statementPanel.ts')).toContain("'wasm-unsafe-eval'");
+    for (const f of ['src/ui/sidebarProvider.ts', 'src/ui/testPanel.ts', 'src/ui/breakPanel.ts']) expect(src(f), f).not.toContain('wasm-unsafe-eval');
+    for (const f of ['src/ui/statementPanel.ts', 'src/ui/sidebarProvider.ts', 'src/ui/testPanel.ts', 'src/ui/breakPanel.ts']) expect(src(f), f).not.toMatch(/'unsafe-eval'/);
+  });
+});
+

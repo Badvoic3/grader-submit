@@ -3,8 +3,11 @@
  * segments and text items shaped like the course PDFs (Word tables). The real
  * PDFs are checked locally with scripts/checkSamples.ts (never committed).
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  DRAW,
   addPageTables,
   baseFontName,
   cellText,
@@ -23,9 +26,14 @@ import {
 } from '../src/data/sampleTables';
 
 const OPS: PathOps = {
-  save: 10, restore: 11, transform: 12, constructPath: 91, moveTo: 13, lineTo: 14, curveTo: 15, curveTo2: 16, curveTo3: 17, closePath: 18, rectangle: 19,
+  save: 10, restore: 11, transform: 12, constructPath: 91,
   fill: 22, eoFill: 23, stroke: 20, closeStroke: 21, fillStroke: 24, eoFillStroke: 25, closeFillStroke: 26, closeEOFillStroke: 27, endPath: 28,
 };
+const { moveTo: M, lineTo: L, curveTo: C, closePath: Z } = DRAW;
+/** One painted path as pdf.js ≥ 5 gives it: [paint op, [Float32Array of draw codes and points], bounds]. */
+const path = (paint: number, ...buf: number[]) => [paint, [new Float32Array(buf)], null];
+/** A PDF `re` as pdf.js ≥ 5 turns it into a path. */
+const re = (x: number, y: number, w: number, h: number) => (w === 0 || h === 0 ? [M, x, y, L, x + w, y + h, Z] : [M, x, y, L, x + w, y, L, x + w, y + h, L, x, y + h, Z]);
 const PAGE = { w: 595, h: 842 };
 
 /** A Word-style ruled table: every border drawn as short thin filled pieces. */
@@ -42,26 +50,59 @@ function wordTable(xs: number[], ys: number[], pieces = 3): Seg[] {
 const T = (str: string, x: number, y: number, font = 'Courier@11.0', h = 11): TextItem => ({ str, x, y, w: str.length * h * 0.6, h, font });
 
 describe('rules from the operator list', () => {
-  it('rects and lines under the CTM, tagged with the paint op; endPath drops the path', () => {
-    const fn = [OPS.save, OPS.transform, OPS.constructPath, OPS.fill, OPS.restore, OPS.constructPath, OPS.stroke, OPS.constructPath, OPS.endPath];
+  it('rectangles and lines under the CTM, tagged with their paint; endPath (a clip) drops the path', () => {
+    const fn = [OPS.save, OPS.transform, OPS.constructPath, OPS.restore, OPS.constructPath, OPS.constructPath];
     const args = [
       null,
       [1, 0, 0, 1, 100, 200],
-      [[OPS.rectangle], [0, 0, 50, 1]],
+      path(OPS.fill, ...re(0, 0, 50, 1)),
       null,
-      null,
-      [[OPS.moveTo, OPS.lineTo, OPS.lineTo, OPS.closePath], [0, 0, 10, 0, 10, 10]],
-      null,
-      [[OPS.rectangle], [0, 0, 500, 500]], // clipping path: never painted
-      null,
+      path(OPS.stroke, M, 0, 0, L, 10, 0, L, 10, 10, Z),
+      path(OPS.endPath, ...re(0, 0, 500, 500)), // clipping path: never painted
     ];
-    const segs = pathSegments(fn, args, OPS);
-    expect(segs[0]).toEqual({ rect: [100, 200, 150, 201], paint: 'fill' });
-    expect(segs.slice(1)).toEqual([
+    expect(pathSegments(fn, args, OPS)).toEqual([
+      { rect: [100, 200, 150, 201], paint: 'fill' },
       { line: [0, 0, 10, 0], paint: 'stroke' },
       { line: [10, 0, 10, 10], paint: 'stroke' },
       { line: [10, 10, 0, 0], paint: 'stroke' },
     ]);
+  });
+
+  it('a closed four-corner box either way round is a rectangle; one with no height is a rectangle too', () => {
+    const fn = [OPS.constructPath, OPS.constructPath, OPS.constructPath];
+    const args = [path(OPS.fill, M, 10, 10, L, 10, 30, L, 50, 30, L, 50, 10, Z), path(OPS.closeStroke, M, 0, 0, L, 40, 0, L, 40, 20, L, 0, 20, Z), path(OPS.fill, ...re(5, 5, 100, 0))];
+    expect(pathSegments(fn, args, OPS)).toEqual([
+      { rect: [10, 10, 50, 30], paint: 'fill' },
+      { rect: [0, 0, 40, 20], paint: 'stroke' },
+      { rect: [5, 5, 105, 5], paint: 'fill' },
+    ]);
+  });
+
+  it('a slanted or open box gives lines; a curve is skipped and keeps its sub-path from being a rectangle', () => {
+    const fn = [OPS.constructPath, OPS.constructPath, OPS.constructPath];
+    const args = [
+      path(OPS.stroke, M, 0, 0, L, 10, 1, L, 10, 11, L, 0, 10, Z), // slanted
+      path(OPS.stroke, M, 0, 0, L, 10, 0, L, 10, 10, L, 0, 10), // not closed
+      path(OPS.fill, M, 0, 0, L, 10, 0, C, 12, 0, 12, 2, 12, 4, L, 12, 10, Z),
+    ];
+    const segs = pathSegments(fn, args, OPS);
+    expect(segs.filter((s) => s.rect)).toEqual([]);
+    expect(segs.slice(0, 4).map((s) => s.line)).toEqual([[0, 0, 10, 1], [10, 1, 10, 11], [10, 11, 0, 10], [0, 10, 0, 0]]);
+    expect(segs.slice(4, 7).map((s) => s.line)).toEqual([[0, 0, 10, 0], [10, 0, 10, 10], [10, 10, 0, 10]]);
+    expect(segs.slice(7).map((s) => s.line)).toEqual([[0, 0, 10, 0], [12, 4, 12, 10], [12, 10, 0, 0]]);
+  });
+
+  it('a path with no points, or an unknown code, gives nothing more', () => {
+    expect(pathSegments([OPS.constructPath], [[OPS.fill, [null], null]], OPS)).toEqual([]);
+    expect(pathSegments([OPS.constructPath], [path(OPS.stroke, M, 0, 0, L, 10, 0, 9, 1, 2)], OPS)).toEqual([{ line: [0, 0, 10, 0], paint: 'stroke' }]);
+  });
+
+  it("the draw codes are pdf.js's own (read from the installed worker)", () => {
+    const worker = readFileSync(resolve(__dirname, '../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'), 'utf8');
+    const m = /const DrawOPS = \{([^}]*)\}/.exec(worker);
+    expect(m, 'DrawOPS not found in the pdf.js worker').not.toBeNull();
+    const codes = Object.fromEntries([...m![1].matchAll(/(\w+): (\d+)/g)].map((x) => [x[1], Number(x[2])]));
+    expect(codes).toEqual(DRAW);
   });
 });
 

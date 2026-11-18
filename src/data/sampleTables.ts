@@ -80,13 +80,6 @@ export interface PathOps {
   restore: number;
   transform: number;
   constructPath: number;
-  moveTo: number;
-  lineTo: number;
-  curveTo: number;
-  curveTo2: number;
-  curveTo3: number;
-  closePath: number;
-  rectangle: number;
   fill: number;
   eoFill: number;
   stroke: number;
@@ -97,6 +90,12 @@ export interface PathOps {
   closeEOFillStroke: number;
   endPath: number;
 }
+
+/**
+ * pdf.js ≥ 5 draw codes inside a `constructPath` (its internal `DrawOPS`, not exported). Pinned here;
+ * `test/sampleTables.test.ts` reads them from the packed worker, so an upgrade that changes them fails a test.
+ */
+export const DRAW = { moveTo: 0, lineTo: 1, curveTo: 2, quadraticCurveTo: 3, closePath: 4 } as const;
 
 const TOL = 2.5;
 /** A filled rect this thin (pt) in one direction is a rule. */
@@ -119,13 +118,15 @@ const mul = (a: M, b: number[]): M => [
 ];
 
 /**
- * Rectangles and straight lines of a page's operator list, under the CTM
- * (save / restore / transform), tagged with the paint operator that follows.
- * Paths ended without painting (`endPath`, clipping) are dropped; curves are skipped.
+ * Rectangles and straight lines of a page's operator list, under the CTM (save / restore / transform), tagged
+ * with their paint. pdf.js ≥ 5 gives one `constructPath` per painted path: `[paint op, [Float32Array of DRAW
+ * codes and points] or [null], bounds]`, and turns a PDF rectangle (`re`) into moveTo, three lineTos and
+ * closePath. So a closed sub-path with four axis-aligned corners (or moveTo, lineTo, closePath: a rectangle with
+ * no width or height) counts as a rectangle again; any other sub-path gives its straight lines. Paths ended
+ * without painting (`endPath`, clipping) are dropped; curves are skipped.
  */
 export function pathSegments(fnArray: ArrayLike<number>, argsArray: ArrayLike<unknown>, ops: PathOps): Seg[] {
   const segs: Seg[] = [];
-  let pending: Omit<Seg, 'paint'>[] = [];
   let ctm: M = [1, 0, 0, 1, 0, 0];
   const stack: M[] = [];
   const tp = (x: number, y: number): [number, number] => [ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]];
@@ -137,43 +138,76 @@ export function pathSegments(fnArray: ArrayLike<number>, argsArray: ArrayLike<un
     if (fn === ops.save) stack.push(ctm);
     else if (fn === ops.restore) ctm = stack.pop() ?? ctm;
     else if (fn === ops.transform && args) ctm = mul(ctm, args as number[]);
-    else if (fills.has(fn) || strokes.has(fn)) {
-      const paint = fills.has(fn) ? 'fill' : 'stroke';
-      for (const s of pending) segs.push({ ...s, paint });
-      pending = [];
-    } else if (fn === ops.endPath) pending = [];
     else if (fn === ops.constructPath && args) {
-      const sub = args[0] as ArrayLike<number>;
-      const coords = args[1] as ArrayLike<number>;
-      let c = 0;
-      let cur: [number, number] | null = null;
-      let start: [number, number] | null = null;
-      for (let i = 0; i < sub.length; i++) {
-        const op = sub[i];
-        if (op === ops.moveTo) {
-          cur = start = tp(coords[c], coords[c + 1]);
-          c += 2;
-        } else if (op === ops.lineTo) {
-          const p = tp(coords[c], coords[c + 1]);
-          c += 2;
-          if (cur) pending.push({ line: [cur[0], cur[1], p[0], p[1]] });
-          cur = p;
-        } else if (op === ops.rectangle) {
-          const [x, y, w, h] = [coords[c], coords[c + 1], coords[c + 2], coords[c + 3]];
-          c += 4;
-          const a = tp(x, y);
-          const b = tp(x + w, y + h);
-          pending.push({ rect: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])] });
-        } else if (op === ops.curveTo) c += 6;
-        else if (op === ops.curveTo2 || op === ops.curveTo3) c += 4;
-        else if (op === ops.closePath && cur && start) {
-          pending.push({ line: [cur[0], cur[1], start[0], start[1]] });
-          cur = start;
-        }
-      }
+      const paintOp = args[0] as number;
+      const paint = fills.has(paintOp) ? 'fill' : strokes.has(paintOp) ? 'stroke' : null;
+      const buf = (args[1] as unknown[] | null)?.[0] as ArrayLike<number> | null | undefined;
+      if (!paint || !buf) continue;
+      for (const s of shapesOf(buf, tp)) segs.push({ ...s, paint });
     }
   }
   return segs;
+}
+
+/** The straight pieces of a path buffer, sub-path by sub-path; rectangles as `rect`. */
+function shapesOf(buf: ArrayLike<number>, tp: (x: number, y: number) => [number, number]): Omit<Seg, 'paint'>[] {
+  const out: Omit<Seg, 'paint'>[] = [];
+  let pts: [number, number][] = [];
+  let straight = true;
+  /** Where the sub-path began: closePath draws back to it, also after a curve broke the run. */
+  let start: [number, number] | null = null;
+  const flush = (closed: boolean) => {
+    if (pts.length >= 2 || (closed && pts.length === 1 && start && pts[0] !== start)) {
+      const rect = closed && straight ? rectOf(pts) : null;
+      if (rect) out.push({ rect });
+      else {
+        for (let i = 1; i < pts.length; i++) if (pts[i - 1] && pts[i]) out.push({ line: [pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]] });
+        const s0 = start ?? pts[0];
+        if (closed) out.push({ line: [pts[pts.length - 1][0], pts[pts.length - 1][1], s0[0], s0[1]] });
+      }
+    }
+    pts = [];
+    straight = true;
+  };
+  for (let i = 0; i < buf.length; ) {
+    const op = buf[i++];
+    if (op === DRAW.moveTo) {
+      flush(false);
+      pts = [(start = tp(buf[i], buf[i + 1]))];
+      i += 2;
+    } else if (op === DRAW.lineTo) {
+      pts.push(tp(buf[i], buf[i + 1]));
+      i += 2;
+    } else if (op === DRAW.curveTo || op === DRAW.quadraticCurveTo) {
+      // A curve breaks the straight run: lines before and after it stay, the curve itself is skipped,
+      // and the sub-path can no longer be a rectangle.
+      const n = op === DRAW.curveTo ? 6 : 4;
+      const end = tp(buf[i + n - 2], buf[i + n - 1]);
+      i += n;
+      flush(false);
+      pts = [end];
+      straight = false;
+    } else if (op === DRAW.closePath) {
+      flush(true);
+      if (start) pts = [start];
+    } else break; // an unknown code: stop rather than misread the points
+  }
+  flush(false);
+  return out;
+}
+
+/** A closed sub-path that is an axis-aligned rectangle (4 corners, or 2 for one with no width or height). */
+function rectOf(pts: [number, number][]): Rect | null {
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.01;
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const box: Rect = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  if (pts.length === 2) return near(pts[0][0], pts[1][0]) || near(pts[0][1], pts[1][1]) ? box : null;
+  if (pts.length !== 4) return null;
+  const [a, b, c, d] = pts;
+  const hv = near(a[1], b[1]) && near(b[0], c[0]) && near(c[1], d[1]) && near(d[0], a[0]);
+  const vh = near(a[0], b[0]) && near(b[1], c[1]) && near(c[0], d[0]) && near(d[1], a[1]);
+  return hv || vh ? box : null;
 }
 
 const cluster = (vals: number[]): number[] => {

@@ -218,7 +218,9 @@ export class StatementPanels implements vscode.Disposable {
       `style-src ${webview.cspSource} 'unsafe-inline'`, // pdf.js sets inline styles on pages / text layer
       `font-src ${webview.cspSource} data:`,
       `img-src ${webview.cspSource} data: blob:`,
-      `script-src 'nonce-${nonce}'`,
+      // 'wasm-unsafe-eval': pdf.js 6 decodes JPEG 2000 / JBIG2 images and ICC colours with WebAssembly
+      // (media/dist/pdfjs/wasm). It allows compiling WebAssembly only, never JavaScript eval (pdf.js 6 has none).
+      `script-src 'nonce-${nonce}' 'wasm-unsafe-eval'`,
       // pdf.js worker: fetched from media/ and started from a blob URL.
       `worker-src blob:`,
       `connect-src ${webview.cspSource}`,
@@ -234,7 +236,7 @@ export class StatementPanels implements vscode.Disposable {
 <link rel="stylesheet" href="${uri('dist', 'statement.css')}">
 <title>Statement</title>
 </head>
-<body data-worker="${uri('dist', 'pdfjs', 'pdf.worker.min.mjs')}" data-fonts="${uri('dist', 'pdfjs', 'standard_fonts')}/">
+<body data-worker="${uri('dist', 'pdfjs', 'pdf.worker.min.mjs')}" data-fonts="${uri('dist', 'pdfjs', 'standard_fonts')}/" data-wasm="${uri('dist', 'pdfjs', 'wasm')}/" data-icc="${uri('dist', 'pdfjs', 'iccs')}/">
 <div id="app"></div>
 <script nonce="${nonce}" type="module" src="${uri('dist', 'statement.js')}"></script>
 </body>

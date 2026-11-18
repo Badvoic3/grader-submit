@@ -143,7 +143,7 @@ describe('Load goes to the runner', () => {
     it('no sample table: a warning with Open statement, which opens it; nothing goes to the sidebar', async () => {
       showing = true;
       const t = make({ statementStore: { cached: async () => ({ kind: 'pdf', bytes: new Uint8Array() }) } });
-      (t as unknown as { pdfjs: () => Promise<unknown> }).pdfjs = async () => ({ getDocument: () => ({ promise: Promise.resolve({ numPages: 0, destroy: async () => {} }) }), GlobalWorkerOptions: {} });
+      (t as unknown as { pdfjs: () => Promise<unknown> }).pdfjs = async () => ({ getDocument: () => ({ promise: Promise.resolve({ numPages: 0 }), destroy: async () => {} }), GlobalWorkerOptions: {} });
       await t.loadSampleCases();
       const n = t.noticeFor('problem:7');
       expect(n).toMatchObject({ tone: 'warn', action: 'openStatement' });

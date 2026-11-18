@@ -12,15 +12,18 @@ import { beforeAll, describe, expect, it } from 'vitest';
 const FAKE_PDFJS = `
   const docs = [];
   const loads = [];
-  globalThis.__pdf = { docs, loads };
+  const params = [];
+  globalThis.__pdf = { docs, loads, params };
   export const GlobalWorkerOptions = {};
-  export function getDocument({ data }) {
+  // pdf.js 6: a document has no destroy() of its own; its loading task frees it.
+  export function getDocument(src) {
     let resolve;
     const promise = new Promise((r) => (resolve = r));
-    const doc = { tag: new TextDecoder().decode(data), numPages: 2, destroyed: false, destroy() { this.destroyed = true; return Promise.resolve(); } };
+    const doc = { tag: new TextDecoder().decode(src.data), numPages: 2, destroyed: false };
     docs.push(doc);
+    params.push({ ...src, data: undefined });
     loads.push(() => resolve(doc));
-    return { promise };
+    return { promise, destroy() { doc.destroyed = true; return Promise.resolve(); } };
   }
   export const pdfjsLib = { GlobalWorkerOptions, getDocument };
 `;
@@ -57,8 +60,8 @@ const settle = async (w: Window) => {
 };
 
 function boot(worker: () => Promise<Response>) {
-  const dom = new JSDOM('<!DOCTYPE html><html lang="en"><body data-worker="w.js" data-fonts="f/"><div id="app"></div></body></html>', { runScripts: 'outside-only', pretendToBeVisual: true });
-  const w = dom.window as unknown as Window & typeof globalThis & { __pdf: { docs: { tag: string; destroyed: boolean }[]; loads: (() => void)[] }; __viewer: { shown: (string | null)[] } };
+  const dom = new JSDOM('<!DOCTYPE html><html lang="en"><body data-worker="w.js" data-fonts="f/" data-wasm="m/wasm/" data-icc="m/iccs/"><div id="app"></div></body></html>', { runScripts: 'outside-only', pretendToBeVisual: true });
+  const w = dom.window as unknown as Window & typeof globalThis & { __pdf: { docs: { tag: string; destroyed: boolean }[]; loads: (() => void)[]; params: Record<string, unknown>[] }; __viewer: { shown: (string | null)[] } };
   const sent: { type: string; problemId?: number }[] = [];
   let workerFetches = 0;
   Object.assign(w, {
@@ -101,6 +104,14 @@ describe('statement viewer', () => {
     w.__pdf.loads[0]();
     await settle(w);
     expect(w.__viewer?.shown ?? []).toEqual([]);
+  });
+
+  it('pdf.js gets the fonts, the image decoders and the colour profiles from the media folder', async () => {
+    const { w, pdf } = boot(ok);
+    pdf(1, 'A');
+    await settle(w);
+    expect(w.__pdf.params[0]).toMatchObject({ standardFontDataUrl: 'f/', wasmUrl: 'm/wasm/', iccUrl: 'm/iccs/' });
+    expect(w.__pdf.params[0]).not.toHaveProperty('isEvalSupported');
   });
 
   it('the document it replaces is destroyed', async () => {

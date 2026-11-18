@@ -65,8 +65,8 @@ let linkService: PDFLinkService | null = null;
 let workerReady: Promise<void> | null = null;
 /** Bumped by every statement shown: a PDF that finishes loading after a newer one is dropped. */
 let loadSeq = 0;
-/** The document in the viewer, destroyed when another replaces it, and the problem it belongs to. */
-let pdfDoc: { destroy(): Promise<void> } | null = null;
+/** The loading task of the document in the viewer (destroying it frees the document), and the problem it belongs to. */
+let pdfTask: { destroy(): Promise<void> } | null = null;
 let shownProblem: number | null = null;
 /** View to restore once pages are laid out (after reopen / restart). */
 let restoreView: StatementViewState | null = null;
@@ -149,17 +149,20 @@ async function showPdf(data: Uint8Array, problemId: number): Promise<void> {
   const seq = ++loadSeq;
   await startWorker();
   const v = setupViewer();
-  const doc = await pdfjsLib.getDocument({
+  // pdf.js 6 has no eval path at all (the old `isEvalSupported` option is gone).
+  const task = pdfjsLib.getDocument({
     data,
     standardFontDataUrl: body.dataset.fonts,
-    isEvalSupported: false, // strict CSP: no eval
-  }).promise;
+    wasmUrl: body.dataset.wasm, // image decoders (JPEG 2000, JBIG2) and colour profiles
+    iccUrl: body.dataset.icc,
+  });
+  const doc = await task.promise;
   if (seq !== loadSeq) {
-    void doc.destroy(); // a newer statement came meanwhile
+    void task.destroy(); // a newer statement came meanwhile
     return;
   }
-  const old = pdfDoc;
-  pdfDoc = doc;
+  const old = pdfTask;
+  pdfTask = task;
   shownProblem = problemId;
   v.setDocument(doc);
   void old?.destroy();
