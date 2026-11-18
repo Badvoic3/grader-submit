@@ -80,6 +80,9 @@ const webview = await context({
   platform: 'browser',
   format: 'iife',
   target: 'es2022',
+  // Thai as it is, not \uXXXX escapes (about 48 KB less): the page declares <meta charset="UTF-8">, and a classic
+  // script with no charset of its own is decoded with the page's encoding.
+  charset: 'utf8',
   plugins: [copyAssets],
 });
 
@@ -89,8 +92,7 @@ const statement = await context({
   outfile: 'media/dist/statement.js',
   platform: 'browser',
   format: 'esm',
-  // A module script is always decoded as UTF-8. (The sidebar's classic script stays ASCII-escaped:
-  // its decoding would depend on the page encoding.)
+  // A module script is always decoded as UTF-8.
   charset: 'utf8',
   target: 'es2022',
 });
@@ -102,6 +104,7 @@ const tests = await context({
   platform: 'browser',
   format: 'iife',
   target: 'es2022',
+  charset: 'utf8', // as the sidebar's: the page is UTF-8
 });
 
 // The break tab (src/ui/breakPanel.ts).
