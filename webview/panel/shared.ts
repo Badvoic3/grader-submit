@@ -46,6 +46,27 @@ export function howToUseLink(): HTMLButtonElement {
   return el('button', { class: 'link small', type: 'button', title: W.howToUseTip, onclick: () => send({ type: 'openUserGuide' }) }, icon('book'), ' ', W.howToUse);
 }
 
+/**
+ * A radio group (WAI-ARIA): only the checked choice is a Tab stop, and the arrow keys, Home and End
+ * move to another choice and pick it. Each choice needs a `data-focus`, so focus survives the re-render.
+ */
+export function radioGroup(group: HTMLElement): HTMLElement {
+  const radios = [...group.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+  const checked = radios.findIndex((r) => r.getAttribute('aria-checked') === 'true');
+  radios.forEach((r, i) => (r.tabIndex = i === Math.max(0, checked) ? 0 : -1));
+  group.addEventListener('keydown', (e) => {
+    const i = radios.indexOf(document.activeElement as HTMLButtonElement);
+    const n = radios.length;
+    const k = e.key;
+    const to = i < 0 ? -1 : k === 'ArrowRight' || k === 'ArrowDown' ? (i + 1) % n : k === 'ArrowLeft' || k === 'ArrowUp' ? (i - 1 + n) % n : k === 'Home' ? 0 : k === 'End' ? n - 1 : -1;
+    if (to < 0 || to === i) return;
+    e.preventDefault();
+    radios[to].focus();
+    radios[to].click();
+  });
+  return group;
+}
+
 /** "Troubleshooting": the README section on GitHub (connection banner, logged-out Account section). */
 export function troubleshootingLink(): HTMLButtonElement {
   return el('button', { class: 'link small', type: 'button', title: W.troubleshootingTip, onclick: () => send({ type: 'openTroubleshooting' }) }, icon('question'), ' ', W.troubleshooting);

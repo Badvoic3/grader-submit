@@ -565,6 +565,7 @@ export const EN_W = {
   pageNumber: "Page number",
   zoomLevel: "Zoom level",
   findInStatement: "Find in statement",
+  statementPages: "Statement pages",
   findTip: "Find in statement (Cmd/Ctrl+F)",
   zoomOutTip: "Zoom out (Cmd/Ctrl -)",
   zoomInTip: "Zoom in (Cmd/Ctrl +)",

@@ -760,6 +760,29 @@ describe.runIf(existsSync(resolve(__dirname, '../esbuild.mjs')))('sidebar webvie
     expect(sent.at(-1)).toEqual({ type: 'setFilter', filter: { status: 'all', topic: null, tags: [], tagMode: 'or' } });
   });
 
+  it('the status filter is a radio group: one Tab stop, arrow keys pick, focus stays on the choice', () => {
+    const { dom, doc, sent, post } = boot();
+    const win = dom.window;
+    post(loggedIn);
+    const segs = () => [...doc.querySelectorAll<HTMLButtonElement>('#sec-problems .segmented .seg')];
+    expect(segs().map((b) => b.tabIndex)).toEqual([0, -1, -1, -1]);
+    segs()[0].focus();
+    const press = (key: string) => doc.activeElement!.dispatchEvent(new win.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    press('ArrowRight');
+    expect(sent.at(-1)).toEqual({ type: 'setFilter', filter: { status: 'unsolved', topic: null } });
+    expect(doc.activeElement).toBe(segs()[1]);
+    post({ ...loggedIn, problems: { ...loggedIn.problems, filter: { status: 'unsolved', topic: null } } });
+    expect((doc.activeElement as HTMLElement).dataset.focus).toBe('status-unsolved'); // the rebuilt button
+    expect(segs().map((b) => b.tabIndex)).toEqual([-1, 0, -1, -1]);
+    press('ArrowLeft');
+    expect(sent.at(-1)).toEqual({ type: 'setFilter', filter: { status: 'all', topic: null } });
+    press('End');
+    expect(sent.at(-1)).toEqual({ type: 'setFilter', filter: { status: 'solved', topic: null } });
+    const n = sent.length;
+    press('a'); // other keys do nothing
+    expect(sent).toHaveLength(n);
+  });
+
   it('no other tags: no Tags dropdown', () => {
     const { doc, post } = boot();
     post(loggedIn);

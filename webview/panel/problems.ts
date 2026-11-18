@@ -8,7 +8,7 @@ import { filterProblems, sorts, sortProblems } from '../filters';
 import { cycleTopic, topicState } from '../../src/shared/tags';
 import type { ProblemFilter, ProblemView, ViewState } from '../../src/shared/messages';
 import { pickerSearch, setPickerOpen } from './current';
-import { MenuItem, button, closeContextMenu, ctxToggle, hooks, iconButton, openContextMenu, saveUi, scorePill, section, send, setCtxToggle, state, titleParts, ui, withContextMenu } from './shared';
+import { MenuItem, button, closeContextMenu, ctxToggle, hooks, iconButton, openContextMenu, radioGroup, saveUi, scorePill, section, send, setCtxToggle, state, titleParts, ui, withContextMenu } from './shared';
 
 export const problemFilter = el('input', { type: 'search', placeholder: W.filterPlaceholder, 'aria-label': W.filterProblems, spellcheck: 'false', value: ui.filter });
 export const problemSearch = el('div', { class: 'search-box' }, icon('search'), problemFilter);
@@ -187,14 +187,15 @@ export const STATUS_FILTERS: { key: ProblemFilter['status']; label: string; tip:
 ];
 
 export function statusFilter(f: ProblemFilter): HTMLElement {
-  return el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': W.filterProblemsByStatus },
+  return radioGroup(el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': W.filterProblemsByStatus },
     ...STATUS_FILTERS.map((x) =>
       el('button', {
         class: `seg${f.status === x.key ? ' active' : ''}`, type: 'button', role: 'radio', 'aria-checked': String(f.status === x.key), title: x.tip,
+        'data-focus': `status-${x.key}`,
         onclick: () => send({ type: 'setFilter', filter: { ...f, status: x.key } }),
       }, x.label),
     ),
-  );
+  ));
 }
 
 /** Sort order: an icon button with a pick-one menu; a dot shows a non-default order. */
@@ -274,13 +275,13 @@ export function tagMenu(f: ProblemFilter, tags: string[]): HTMLElement {
   },
     el('div', { class: 'tag-menu-head' },
       el('span', { class: 'small muted' }, W.tagMatch),
-      el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': W.tagMatch },
+      radioGroup(el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': W.tagMatch },
         ...modes.map((m) => el('button', {
           class: `seg${mode === m.key ? ' active' : ''}`, type: 'button', role: 'radio', 'aria-checked': String(mode === m.key), title: m.tip,
           'data-focus': `tag-mode-${m.key}`,
           onclick: () => setTags(f, { tagMode: m.key }),
         }, m.label)),
-      ),
+      )),
       el('button', { class: 'link small', type: 'button', title: W.clearTagsTip, disabled: !chosen.length, 'data-focus': 'tag-clear', onclick: () => setTags(f, { tags: [] }) }, W.clearTags),
     ),
     el('div', { class: 'tag-list' },

@@ -40,7 +40,7 @@ const tb = buildToolbar({
   close: () => send({ type: 'close' }),
 });
 const { toolbar, pageInput, pageCount, zoomLabel, search, matches, titleEl } = tb;
-const container = el('div', { id: 'viewerContainer', tabindex: '0' }, el('div', { id: 'viewer', class: 'pdfViewer' }));
+const container = el('div', { id: 'viewerContainer', tabindex: '0', role: 'region', 'aria-label': W.statementPages }, el('div', { id: 'viewer', class: 'pdfViewer' }));
 const textView = el('div', { class: 'text-view' });
 const status = el('div', { class: 'status', role: 'status' });
 const noteEl = el('div', { class: 'note', role: 'status' });

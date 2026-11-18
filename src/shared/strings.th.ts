@@ -17,7 +17,7 @@ import type { Strings } from './strings';
  * Everything else was reviewed at checkpoint B (2026-11-03). Add keys here
  * when a new text is translated without review.
  */
-export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun', 'G.statusBar.compileError', 'S.migration.noticeDetail', 'W.runEdited', 'W.runEditedLine', 'W.downloadAgain', 'W.goToLine', 'S.runner.cantOpen'];
+export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun', 'G.statusBar.compileError', 'S.migration.noticeDetail', 'W.runEdited', 'W.runEditedLine', 'W.downloadAgain', 'W.goToLine', 'S.runner.cantOpen', 'W.statementPages'];
 
 export const TH_HOW_LINKED: Strings['HOW_LINKED'] = {
   chosen: 'คุณเลือกเอง',
@@ -556,6 +556,7 @@ export const TH_W: Strings['W'] = {
   pageNumber: 'หมายเลขหน้า',
   zoomLevel: 'ระดับการซูม',
   findInStatement: 'ค้นหาในโจทย์',
+  statementPages: 'หน้าโจทย์',
   findTip: 'ค้นหาในโจทย์ (Cmd/Ctrl+F)',
   zoomOutTip: 'ซูมออก (Cmd/Ctrl -)',
   zoomInTip: 'ซูมเข้า (Cmd/Ctrl +)',
