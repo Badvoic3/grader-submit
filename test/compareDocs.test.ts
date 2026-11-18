@@ -5,6 +5,7 @@ const v = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 vi.mock('vscode', () => ({
   Uri: { from: (u: { scheme: string; path: string }) => u },
   commands: { executeCommand: async (...a: unknown[]) => void v.calls.push(a) },
+  window: { showTextDocument: async (...a: unknown[]) => void v.calls.push(['show', ...a]) },
 }));
 
 import { CompareDocs } from '../src/ui/compareDocs';
@@ -42,5 +43,26 @@ describe('CompareDocs', () => {
     for (let i = 0; i < 30; i++) await d.open('a', 'e', 'x', 1);
     expect(d.provideTextDocumentContent(v.calls[0][1] as never)).toBe('');
     expect(d.provideTextDocumentContent(v.calls[29][1] as never)).toBe('e');
+  });
+
+  // The grader's compiler message ("Open in editor"): an Untitled tab would be unsaved and ask to save on close.
+  it('show() opens one read-only text beside, named so VS Code picks its language', async () => {
+    const d = new CompareDocs();
+    await d.show('compiler-message.log', 'a.cpp:1: error\n', -2);
+    const [command, doc, opts] = v.calls[0] as [string, Doc, object];
+    expect(command).toBe('show');
+    expect(doc.scheme).toBe('cedt-grader-compare');
+    expect(doc.path.endsWith('/compiler-message.log')).toBe(true);
+    expect(opts).toEqual({ viewColumn: -2, preview: true });
+    expect(d.provideTextDocumentContent(doc as never)).toBe('a.cpp:1: error\n');
+  });
+});
+
+describe('texts we open are read-only', () => {
+  it('no Untitled documents: they open unsaved and ask to save when closed', async () => {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const files = readdirSync('src', { recursive: true }).map(String).filter((f) => f.endsWith('.ts'));
+    const offenders = files.filter((f) => /openTextDocument\(\{/.test(readFileSync(`src/${f}`, 'utf8')));
+    expect(offenders).toEqual([]);
   });
 });

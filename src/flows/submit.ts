@@ -340,10 +340,9 @@ export class SubmitFlow {
     if (d.state !== 'graded') this.updateResult(key, { phase: 'timeout', message: S.submit.stillGrading });
   }
 
-  async showCompilerMessage(): Promise<void> {
+  /** The current file's grader compiler message, for "Open in editor"; null when its result isn't a compile error. */
+  compilerMessage(): string | null {
     const r = this.results.get(this.host.folder.targetUri()?.fsPath);
-    if (!r?.compileError) return;
-    const doc = await vscode.workspace.openTextDocument({ content: r.compilerMessage ?? '', language: 'log' });
-    await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside });
+    return r?.compileError ? (r.compilerMessage ?? '') : null;
   }
 }

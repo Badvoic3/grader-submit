@@ -1586,7 +1586,11 @@ export class GraderController implements vscode.Disposable {
   openTests = () => this.testPanel.open();
   submit = () => this.submitFlow.submit();
   showLastResult = () => this.submitFlow.showLastResult();
-  showCompilerMessage = () => this.submitFlow.showCompilerMessage();
+  /** "Open in editor": a read-only tab beside the code (an Untitled one would ask to be saved when closed). */
+  showCompilerMessage = async () => {
+    const text = this.submitFlow.compilerMessage();
+    if (text !== null) await this.compareDocs.show('compiler-message.log', text, vscode.ViewColumn.Beside);
+  };
 
   /** The Result card's Go to line: the grader's compile error, in the file that was submitted. */
   async goToCompileError(): Promise<void> {
@@ -1628,12 +1632,20 @@ export class GraderController implements vscode.Disposable {
     return d?.source !== null ? d : undefined;
   }
 
-  /** Open a past submission's source in a new untitled editor (never touches the user's file). */
+  /** Open a past submission's source in a read-only tab, titled with its attempt (never touches the user's file). */
   async openSubmissionSource(id: number): Promise<void> {
     const d = await this.detailWithSource(id);
     if (!d) return;
-    const doc = await vscode.workspace.openTextDocument({ content: d.source ?? '', language: vscodeLanguageId(d.sourceFilename ?? this.fileUri?.path ?? '') });
-    await vscode.window.showTextDocument(doc, { preview: false });
+    rememberNewest(this.comparedSources, d.id, d.source ?? '', LIMITS.comparedSourcesMax);
+    const doc = await vscode.workspace.openTextDocument(this.submissionUri(d));
+    const language = vscodeLanguageId(d.sourceFilename ?? this.fileUri?.path ?? '');
+    await vscode.window.showTextDocument(language === doc.languageId ? doc : await vscode.languages.setTextDocumentLanguage(doc, language), { preview: false });
+  }
+
+  /** `cedt-grader-submission:/<id>/<Attempt N · file>`: the file's extension picks the language. */
+  private submissionUri(d: SubmissionDetail): vscode.Uri {
+    const name = d.sourceFilename || `submission${/\.[^./]+$/.exec(this.fileUri?.path ?? '')?.[0] ?? ''}`;
+    return vscode.Uri.from({ scheme: SUBMISSION_SCHEME, path: `/${d.id}/${d.number !== null ? `${W.attempt(d.number)} · ` : ''}${name}` });
   }
 
   /** Diff a past submission (read-only virtual document) against the current file. */
@@ -1643,8 +1655,7 @@ export class GraderController implements vscode.Disposable {
     if (!d) return;
     // A submission still grading isn't cached, so the diff's left side keeps its own copy.
     rememberNewest(this.comparedSources, d.id, d.source ?? '', LIMITS.comparedSourcesMax);
-    const name = d.sourceFilename || 'submission';
-    const left = vscode.Uri.from({ scheme: SUBMISSION_SCHEME, path: `/${d.id}/${name}` });
+    const left = this.submissionUri(d);
     const right = this.folder.targetUri() ?? this.fileUri; // folder mode: the file Submit sends
     const label = `${d.number !== null ? W.attempt(d.number) : `#${d.id}`} ↔ ${right.path.split('/').pop()}`;
     await vscode.commands.executeCommand('vscode.diff', left, right, label);
