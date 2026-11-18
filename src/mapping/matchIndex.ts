@@ -1,5 +1,5 @@
 import type { Problem } from '../grader/types';
-import { resolveProblem } from './match';
+import { resolveProblem, type ScoredCandidate } from './match';
 import { pathKey } from './paths';
 
 /**
@@ -40,8 +40,8 @@ export interface FileMatch {
 }
 
 /** The problem a file would show when opened (null: none, below the threshold, or a tie). */
-export function matchFile(file: SourceFile, problems: Problem[], baseUrl: string, namePattern?: string): FileMatch | null {
-  const r = resolveProblem({ savedProblemId: null, filePath: file.fsPath, problems, baseUrl, folders: file.folders, namePattern });
+export function matchFile(file: SourceFile, problems: Problem[], baseUrl: string, namePattern?: string, scores?: Map<string, ScoredCandidate[]>): FileMatch | null {
+  const r = resolveProblem({ savedProblemId: null, filePath: file.fsPath, problems, baseUrl, folders: file.folders, namePattern, scores });
   if (r.kind !== 'match') return null;
   if (r.source !== 'filename' && r.source !== 'folder' && r.source !== 'suggested') return null;
   return { problemId: r.problem.id, how: r.source };
@@ -56,8 +56,9 @@ export interface IndexedFile {
 export function buildMatchIndex(files: SourceFile[], problems: Problem[], baseUrl: string, namePattern?: string): Map<number, IndexedFile[]> {
   const out = new Map<number, IndexedFile[]>();
   if (!problems.length) return out;
+  const scores = new Map<string, ScoredCandidate[]>(); // for this list only: files in one folder score its name once
   for (const f of files) {
-    const m = matchFile(f, problems, baseUrl, namePattern);
+    const m = matchFile(f, problems, baseUrl, namePattern, scores);
     if (!m) continue;
     const list = out.get(m.problemId) ?? [];
     list.push({ fsPath: f.fsPath, how: m.how });

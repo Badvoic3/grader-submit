@@ -40,6 +40,17 @@ const files = [
 ];
 
 describe('one matcher: problem → file gives the same answer as file → problem', () => {
+  it('one build shares its scores across files, and gets every answer a file alone gets', () => {
+    // The same names under folders that do and don't earn a tag bonus, in both orders: the memo is keyed by folders too.
+    const twice = [...files, F('/w/other/01_expr.cpp', ['other']), F('/w/expr/01_expr.cpp', ['expr']), F('/w/scratch/main.cpp', ['scratch']), F('/w/expr/main.cpp', ['expr'])];
+    const index = buildMatchIndex(twice, problems, BASE);
+    for (const f of twice) {
+      const alone = matchFile(f, problems, BASE);
+      const found = [...index].find(([, list]) => list.some((x) => x.fsPath === f.fsPath && x.how === alone?.how));
+      expect(found?.[0] ?? null, f.fsPath).toBe(alone?.problemId ?? null);
+    }
+  });
+
   const index = buildMatchIndex(files, problems, BASE);
 
   it('for every fixture file, the index lists it under exactly the problem it resolves to (or nowhere)', () => {

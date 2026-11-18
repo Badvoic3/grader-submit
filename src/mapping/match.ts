@@ -95,6 +95,11 @@ export interface MatchInput {
   folders?: string[];
   /** File-name pattern (`cedtGrader.fileNamePattern`, validated); a file named by it is an exact match too. */
   namePattern?: string;
+  /**
+   * Scores already worked out for these problems, keyed by name and folders. Only for many files against ONE
+   * problem list (the match index): every file in a folder scores the folder's name the same way.
+   */
+  scores?: Map<string, ScoredCandidate[]>;
 }
 
 export type MatchResult =
@@ -146,12 +151,19 @@ export function resolveProblem(input: MatchInput): MatchResult {
   if (folderHits.length === 1) return { kind: 'match', problem: folderHits[0], source: 'folder', suggestions: [] };
   if (folderHits.length > 1) return { kind: 'ambiguous', candidates: folderHits, source: 'folder' };
 
-  const scored = scoreCandidates(stem, problems, folders);
+  const score = (name: string): ScoredCandidate[] => {
+    if (!input.scores) return scoreCandidates(name, problems, folders);
+    const key = `${name}\0${folders.join('\0')}`;
+    let s = input.scores.get(key);
+    if (!s) input.scores.set(key, (s = scoreCandidates(name, problems, folders)));
+    return s;
+  };
+  const scored = score(stem);
   const decision = decideSuggestion(scored);
   if (decision.kind === 'suggested') return { kind: 'match', problem: decision.problem, source: 'suggested', suggestions: scored.map((x) => x.p) };
   if (decision.kind === 'close') return { kind: 'ambiguous', candidates: decision.candidates, source: 'suggested' };
   // The file name says nothing: the same rules for the folder's name.
-  const byFolder = scoreCandidates(folder, problems, folders);
+  const byFolder = score(folder);
   const folderDecision = decideSuggestion(byFolder);
   if (folderDecision.kind === 'suggested') return { kind: 'match', problem: folderDecision.problem, source: 'suggested', suggestions: byFolder.map((x) => x.p) };
   if (folderDecision.kind === 'close') return { kind: 'ambiguous', candidates: folderDecision.candidates, source: 'suggested' };
