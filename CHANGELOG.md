@@ -9,6 +9,12 @@
 - **Load results show in the Tests view:** pressing **Load test cases** or **Load samples** there shows what was loaded, or what went wrong, right under the buttons (with **Open statement** or **Download again** where it helps), instead of a pop-up.
 - **Go to line for compile errors:** a compile error has a **Go to line** button, in the Tests view for your compiler and on the Result card for the grader's.
 
+- **`Grader: Open Tests` always opens the Tests view:** run from the Command Palette or a key binding while the view was showing, it used to close it. The panel's **Open tests** / **Close tests** button still does both.
+
+### Keyboard and screen readers
+- **Arrow keys in the problem filters:** the status filter (All / Unsolved / In progress / Solved) and the tags' Any / All are one Tab stop each; the arrow keys, Home and End move to another choice and pick it, and focus stays on it.
+- The statement's page area has a name for screen readers.
+
 ### Statements
 - **pdf.js 6:** the statement viewer and **Load samples** now use pdf.js 6.5 (it was 4.10, which no longer gets fixes). Images in scanned statements (JPEG 2000, JBIG2) are decoded by pdf.js's newer decoders, CMYK colours use a colour profile, and **Load samples** reads more statements correctly (on statements drawn with shaded cells it used to find nothing, or cut text short).
 
