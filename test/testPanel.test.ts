@@ -182,6 +182,22 @@ describe('TestPanel', () => {
     expect((v.panel as { dispose: ReturnType<typeof vi.fn> }).dispose).toHaveBeenCalled();
   });
 
+  it('open() never closes a showing tab: it only shows it', async () => {
+    const p = make();
+    await p.open();
+    expect(p.showing).toBe(true);
+    await p.open();
+    expect(v.created).toHaveLength(1);
+    expect((v.panel as { dispose: ReturnType<typeof vi.fn> }).dispose).not.toHaveBeenCalled();
+    expect(p.showing).toBe(true);
+  });
+
+  it('the Open Tests command opens; only the panel button toggles', () => {
+    const ext = readFileSync(new URL('../src/extension.ts', import.meta.url), 'utf8');
+    expect(ext).toMatch(/command\('cedtGrader\.openTests', \(\) => controller\.openTests\(\)\)/);
+    expect(ext).not.toContain('toggleTests');
+  });
+
   it('a closed tab opens anew', async () => {
     const p = make();
     await p.open();

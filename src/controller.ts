@@ -1583,6 +1583,7 @@ export class GraderController implements vscode.Disposable {
   }
   stopTests = () => this.runner.stop();
   toggleTests = () => this.testPanel.toggle();
+  openTests = () => this.testPanel.open();
   submit = () => this.submitFlow.submit();
   showLastResult = () => this.submitFlow.showLastResult();
   showCompilerMessage = () => this.submitFlow.showCompilerMessage();

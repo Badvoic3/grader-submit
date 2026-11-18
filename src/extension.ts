@@ -86,7 +86,7 @@ function start(ctx: vscode.ExtensionContext, crash: CrashReporter): void {
     command('cedtGrader.downloadAttachment', () => controller.downloadAttachment()),
     command('cedtGrader.toggleFolderMode', () => controller.toggleFolderMode()),
     command('cedtGrader.runTests', () => controller.runTests()),
-    command('cedtGrader.openTests', () => controller.toggleTests()),
+    command('cedtGrader.openTests', () => controller.openTests()), // opens or shows it; only the panel's button closes it
     command('cedtGrader.loadTestcases', () => controller.loadTestcases(false)),
     command('cedtGrader.loadSampleCases', () => controller.loadSampleCases()),
     command('cedtGrader.showRequestLog', () => controller.showRequestLog()),
