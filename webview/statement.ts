@@ -212,20 +212,21 @@ search.addEventListener('keydown', (e) => {
     container.focus();
   }
 });
+// Capture phase, and stopped there: VS Code's webview host forwards every keydown to the workbench from its own window
+// listener (preventDefault or not), so Cmd + would zoom the whole window too, and Cmd+F would reach VS Code.
 window.addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f' && body.classList.contains('mode-pdf')) {
-    e.preventDefault();
+  if (!body.classList.contains('mode-pdf')) return;
+  const k = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f' ? 'find' : zoomKey(e);
+  if (!k) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (k === 'find') {
     search.focus();
     search.select();
-  } else if (body.classList.contains('mode-pdf')) {
-    const k = zoomKey(e);
-    if (!k) return;
-    e.preventDefault();
-    if (k === 'in') zoom(1.15);
-    else if (k === 'out') zoom(1 / 1.15);
-    else if (viewer) viewer.currentScaleValue = 'page-width';
-  }
-});
+  } else if (k === 'in') zoom(1.15);
+  else if (k === 'out') zoom(1 / 1.15);
+  else if (viewer) viewer.currentScaleValue = 'page-width';
+}, true);
 
 // --------------------------------------------------------------- messages
 

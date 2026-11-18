@@ -153,4 +153,21 @@ describe('statement viewer', () => {
     expect(workerFetches()).toBe(2);
     expect(w.__viewer.shown).toEqual(['A']);
   });
+
+  // VS Code's webview host forwards every keydown to the workbench from a window listener, preventDefault or not,
+  // so Cmd + zoomed the PDF and the whole window at once (seen in real VS Code, checklist §9).
+  it('zoom and find keys stay in the statement: VS Code never gets them', async () => {
+    const { w, pdf } = boot(ok);
+    const forwarded: string[] = [];
+    w.addEventListener('keydown', (e) => forwarded.push(e.key)); // as VS Code's pre/index.html does
+    pdf(1, 'A');
+    await settle(w);
+    w.__pdf.loads[0]();
+    await settle(w);
+    const press = (key: string, meta = true) => w.document.body.dispatchEvent(new w.KeyboardEvent('keydown', { key, metaKey: meta, bubbles: true, cancelable: true }));
+    for (const k of ['=', '+', '-', '0', 'f']) press(k);
+    press('s'); // Cmd+S and plain keys still reach VS Code
+    press('a', false);
+    expect(forwarded).toEqual(['s', 'a']);
+  });
 });

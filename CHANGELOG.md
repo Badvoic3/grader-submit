@@ -20,6 +20,7 @@
 - **The statement's pages show a focus ring** when you reach them with Tab, like every other control, and have a name for screen readers.
 
 ### Statements
+- **Zooming the statement no longer zooms VS Code:** **Cmd/Ctrl +** and **Cmd/Ctrl −** in the statement tab zoomed the PDF and the whole VS Code window at once. They now zoom only the PDF, and **Cmd/Ctrl+F** only searches the statement.
 - **pdf.js 6:** the statement viewer and **Load samples** now use pdf.js 6.5 (it was 4.10, which no longer gets fixes). Images in scanned statements (JPEG 2000, JBIG2) are decoded by pdf.js's newer decoders, CMYK colours use a colour profile, and **Load samples** reads more statements correctly (on statements drawn with shaded cells it used to find nothing, or cut text short).
 
 ### Take a break
