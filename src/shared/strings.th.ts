@@ -17,7 +17,7 @@ import type { Strings } from './strings';
  * Everything else was reviewed at checkpoint B (2026-11-03). Add keys here
  * when a new text is translated without review.
  */
-export const TH_REVIEW: readonly string[] = ['W.caseOutput', 'W.copyOutput', 'G.webSessionExpired', 'G.webLoginFormMissing', 'G.webAgreement', 'G.webLoginFailed', 'G.cancelled', 'W.waitForRun', 'G.statusBar.compileError', 'S.migration.noticeDetail', 'W.runEdited', 'W.runEditedLine', 'W.downloadAgain', 'W.goToLine', 'S.runner.cantOpen', 'W.statementPages'];
+export const TH_REVIEW: readonly string[] = [];
 
 export const TH_HOW_LINKED: Strings['HOW_LINKED'] = {
   chosen: 'คุณเลือกเอง',
@@ -277,7 +277,7 @@ export const TH_S: Strings['S'] = {
     noFile: 'เปิดไฟล์ source ก่อนจึงจะรันทดสอบได้',
     saveFailed: (why) => `บันทึก test case ไม่สำเร็จ: ${why}`,
     noLanguage: 'ระบุภาษาของไฟล์นี้ไม่ได้',
-    cantOpen: (path) => `เปิด ${path} ไม่ได้`,
+    cantOpen: (path) => `เปิดไฟล์ ${path} ไม่ได้`,
   },
   runTests: {
     noCases: 'เพิ่มหรือโหลด test case ก่อน',
@@ -351,7 +351,7 @@ export const TH_S: Strings['S'] = {
 
   migration: {
     notice: 'Grader Submit มีระบบรันทดสอบในตัวแล้ว และคัดลอกข้อมูลการเชื่อมโจทย์กับ test case เดิมมาให้เรียบร้อย',
-    noticeDetail: (n) => `มีไฟล์ระบบเก่า ${n} ไฟล์ในพื้นที่ทำงานนี้ที่ไม่ต้องใช้แล้ว จะย้ายไปถังขยะไหม?`,
+    noticeDetail: (n) => `มีไฟล์เก่าที่ไม่ต้องใช้แล้ว ${n} ไฟล์ใน workspace นี้ จะย้ายไปถังขยะไหม?`,
     moveToTrash: 'ย้ายไปถังขยะ',
     whatsNew: 'ดูสิ่งใหม่',
     dontAskAgain: 'ไม่ต้องถามอีก',
@@ -556,7 +556,7 @@ export const TH_W: Strings['W'] = {
   pageNumber: 'หมายเลขหน้า',
   zoomLevel: 'ระดับการซูม',
   findInStatement: 'ค้นหาในโจทย์',
-  statementPages: 'หน้าโจทย์',
+  statementPages: 'หน้าเอกสารโจทย์',
   findTip: 'ค้นหาในโจทย์ (Cmd/Ctrl+F)',
   zoomOutTip: 'ซูมออก (Cmd/Ctrl -)',
   zoomInTip: 'ซูมเข้า (Cmd/Ctrl +)',
@@ -629,7 +629,7 @@ export const TH_W: Strings['W'] = {
   runTestsTip: 'รัน test case บนเครื่องของคุณ',
   stopTests: 'หยุด',
   stopTestsTip: 'หยุดการรัน',
-  waitForRun: 'รอให้การรันเสร็จก่อน',
+  waitForRun: 'รอให้รันทดสอบเสร็จก่อน',
   openTests: 'เปิดหน้าทดสอบ',
   openTestsTip: 'เปิด test case ข้างโค้ด',
   closeTests: 'ปิดหน้าทดสอบ',
@@ -640,9 +640,9 @@ export const TH_W: Strings['W'] = {
   runRunning: (done, total) => `กำลังรัน ${done}/${total}…`,
   runPassed: (passed, total) => `ผ่าน ${passed} / ${total}`,
   runCompileError: 'คอมไพล์ไม่ผ่าน',
-  runEdited: 'คุณแก้โค้ดหลังจากรันครั้งนี้',
+  runEdited: 'มีการแก้ไขโค้ดหลังจากรันครั้งนี้',
   downloadAgain: 'ดาวน์โหลดอีกครั้ง',
-  runEditedLine: 'ผลเหล่านี้มาจากก่อนการแก้ไขครั้งล่าสุด',
+  runEditedLine: 'ผลทดสอบนี้เป็นของโค้ดก่อนแก้ไขล่าสุด',
   testsNoFile: 'เปิดไฟล์ source ก่อนจึงจะรันทดสอบได้',
   runAll: 'รันทั้งหมด',
   runAllTip: 'คอมไพล์และรันทุกเคส',
@@ -768,7 +768,7 @@ export const TH_G: Strings['G'] = {
   noWebSession: 'ยังไม่ได้เข้าสู่ระบบเว็บ Grader โปรดเข้าสู่ระบบใหม่',
   webSessionExpired: 'การเข้าสู่ระบบเว็บ Grader หมดอายุแล้ว',
   webLoginFormMissing: 'ไม่พบฟอร์มเข้าสู่ระบบบนเว็บ Grader',
-  webAgreement: 'เว็บ Grader ขอให้ยอมรับข้อตกลงก่อน โปรดเข้าสู่ระบบที่เว็บหนึ่งครั้ง',
+  webAgreement: 'ต้องยอมรับข้อตกลงบนเว็บ Grader ก่อน โปรดเข้าสู่ระบบผ่านหน้าเว็บสักครั้ง',
   webLoginFailed: (alert) => (alert ? `เข้าสู่ระบบเว็บ Grader ไม่สำเร็จ: ${alert}` : 'เข้าสู่ระบบเว็บ Grader ไม่สำเร็จ'),
   cancelled: 'ยกเลิกแล้ว',
   fileEmpty: 'ไฟล์ว่างเปล่า เขียนโค้ดคำตอบก่อนส่ง',
