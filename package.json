@@ -518,6 +518,17 @@
           "default": true,
           "description": "%config.statementBeside.description%"
         },
+        "cedtGrader.attachments.saveTo": {
+          "type": "string",
+          "default": "workspaceRoot",
+          "enum": ["workspaceRoot", "activeFileFolder", "ask"],
+          "enumDescriptions": [
+            "%config.attachments.saveTo.workspaceRoot%",
+            "%config.attachments.saveTo.activeFileFolder%",
+            "%config.attachments.saveTo.ask%"
+          ],
+          "description": "%config.attachments.saveTo.description%"
+        },
         "cedtGrader.explorer.badge": {
           "type": "string",
           "default": "score",
