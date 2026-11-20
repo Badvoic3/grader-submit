@@ -144,7 +144,7 @@ In Folder Mode (whether linked manually, extracted from a zip, matched by folder
 - **Submits (`student.h`):** The single file sent when you press **Submit to Grader** (since `cafe-grader` accepts one file per submission and compiles it with the server's driver).
 - **Runs (`main.cpp`):** The entry-point file containing `main()` that **Run tests** compiles together with the folder's other source files.
 
-Hover either dropdown (`Automatic: <file>`) to see why that file was selected, or pick a different file from the dropdown to override it.
+Hover either dropdown (`Automatic: <file>`) to see why that file was selected, or pick a different file from the dropdown to override it. The first option always names the file automatic detection would pick; choosing it forgets your choice.
 
 ---
 
@@ -163,13 +163,17 @@ At the top of the **Tests** split view (or from the Command Palette), two button
 - **Load test cases:** Downloads official test cases from the grader API (for problems that publish them). Cases are deduplicated automatically, and trailing `KEY: …` lines printed only by the grader's secret driver are stripped in Folder Mode so local runs match.
 - **Load samples:** Reads the example input/output table directly from the problem statement PDF — works on any problem with a ruled PDF example table, even when the grader hides official test cases.
 
+What was loaded (or what went wrong) shows as a short notice under the buttons, with **Open statement** or **Download again** when that helps.
+
 ### Running & Inspecting Cases
 
-- **Run tests (`Grader: Run Tests`):** Saves dirty files (when `cedtGrader.saveBeforeSubmit` is on), compiles your program into `<os.tmpdir()>/cedt-grader-bin/` (skipping recompilation when source and headers haven't changed, and falling back automatically if `/tmp` is mounted `noexec`), and runs each case sequentially with process-group cleanup and a 64 KB display cap.
-- **Open tests (`Grader: Open Tests`):** Opens the **Tests** split view in a locked editor group beside your code:
+- **Run tests (`Grader: Run Tests`):** Saves dirty files (when `cedtGrader.saveBeforeSubmit` is on), compiles your program into a per-user `cedt-grader-bin-…` folder in your temp folder (skipping recompilation when source and headers haven't changed, and building in the extension's own storage instead if the temp folder is mounted `noexec`), and runs each case sequentially with process-group cleanup and a 64 KB display cap.
+- **Open tests (`Grader: Open Tests`):** Opens the **Tests** split view in a locked editor group beside your code (the command always opens or shows it; the panel's **Open tests** / **Close tests** button also closes it):
   - View **Passed (`AC`)**, **Wrong Answer (`WA`)**, **Time Limit (`TLE`)**, **Runtime Error (`RE`)**, or **Compile Error** with runtime (`ms`) and estimated peak memory (`MB` on macOS and Linux).
-  - Inspect line-numbered **Input**, **Expected**, **Actual**, and collapsible **Stderr** (stderr never fails a case if exit code is `0` and stdout matches).
-  - Highlight character/token differences inline, click **Compare in VS Code** to open a full side-by-side diff editor, or click **Use as expected** to adopt the current output.
+  - Every case shows its **Input**. A passed case shows one **Output** block; a failed one shows **Expected** and **Actual** side by side, plus a collapsible **Stderr** (stderr never fails a case if exit code is `0` and stdout matches).
+  - Highlight character/token differences inline, click **Compare in VS Code** to open a full side-by-side diff editor, or click **Set Actual as Expected** to adopt the current output.
+  - **Results older than your code:** after you edit the file (or any source of a linked folder), the run summary turns grey with a clock, in the panel and in the Tests view. Undo back to the same code, or run again, and it clears.
+  - **Compile errors:** **Go to line** puts the cursor on the first error, for your compiler here and for the grader's on the Result card.
   - Add custom cases (**+ Add case**), edit inputs/outputs inline (editing a grader or PDF sample case turns its badge into `Custom`), reorder cases by drag or <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>, and re-run individual cases.
   - If only `PDF Sample` cases fail twice in a row, a tip reminds you to check the statement PDF in case the table layout was misread.
 
@@ -179,7 +183,7 @@ At the top of the **Tests** split view (or from the Command Palette), two button
 
 Click the PDF icon (**Open statement** or `Grader: Open Problem Statement`) to open the statement in a locked split tab beside your code:
 
-- **Controls:** Zoom with trackpad pinch or <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>-</kbd>, fit width with <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>0</kbd>, step through pages, and search text with <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>F</kbd>.
+- **Controls:** Zoom with trackpad pinch or <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>-</kbd>, fit width with <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>0</kbd>, step through pages, and search text with <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>F</kbd>. These keys act on the statement only; VS Code's own zoom stays as it is.
 - **Follows your active file (`cedtGrader.statementFollowsFile`):** Switching to another solution file updates the open statement tab in place without stealing focus, and closes it when you switch to a source file with no problem.
 - **Offline cache:** Statements are cached in `globalStorageUri` (up to `cedtGrader.cacheMaxMB`) and reopen across restarts without network requests.
 
@@ -192,6 +196,7 @@ Click the PDF icon (**Open statement** or `Grader: Open Problem Statement`) to o
 - Press **Submit to Grader** in **Current problem**, click the status bar item (`$(cloud-upload) Submit to Grader`), or run **Grader: Submit Current File**.
 - With `cedtGrader.confirmBeforeSubmit` on (`true`), an auto-matched file asks once right above the Submit button; confirming saves the match as **Chosen by you** so subsequent submits go straight through.
 - With `cedtGrader.saveBeforeSubmit` on (`true`), the file is saved before upload so formatters run first.
+- No keys are bound by default. To submit or run tests from the keyboard, bind **Grader: Submit Current File** or **Grader: Run Tests** in **Keyboard Shortcuts**.
 
 ### Result Section
 
@@ -199,7 +204,8 @@ Click the PDF icon (**Open statement** or `Grader: Open Problem Statement`) to o
   <img src="media/readme/result.png" width="380" alt="Result section showing verdict tiles, dashed group box, score, improvement line, and the Reading the results legend">
 </p>
 
-- Shows live polling (`Submitting…` → `Grading…`) and opens automatically when finished (`cedtGrader.revealResultAfterSubmit`).
+- Shows live polling (`Submitting…` → `Waiting to be graded…`) and opens automatically when finished (`cedtGrader.revealResultAfterSubmit`). If you stop waiting (**Cancel** on the notification), **Grader: Show Last Result** loads the submission you just sent.
+- A compile error shows the grader's message with **Go to line** and **Open in editor** (a read-only tab).
 - Displays one coloured tile per test case (`P` correct, `-` wrong answer, `T` time limit, `X` crash/memory limit, `S` partial) and dashed boxes around grouped test cases (where the lowest tile determines the group's score). Click **?** to toggle the legend.
 
 ### History Section
@@ -209,7 +215,7 @@ Click the PDF icon (**Open statement** or `Grader: Open Problem Statement`) to o
 </p>
 
 - Lists every submission for the problem, with a `★` badge on the submission that holds your counted score.
-- Click any submission to load per-test scores, runtime, peak memory, compiler output, **Open this version** (read-only editor), and **Compare with current file** (side-by-side diff against your active file).
+- Click any submission to load per-test scores, runtime, peak memory, compiler output, **Open this version** (a read-only tab titled `Attempt N · file`), and **Compare with current file** (side-by-side diff against your active file).
 
 ---
 
@@ -219,7 +225,7 @@ Click the PDF icon (**Open statement** or `Grader: Open Problem Statement`) to o
   <img src="media/readme/problems.png" width="380" alt="Problems section showing status filter tabs, search input, sort button, topic pills, Tags dropdown, and problem rows">
 </p>
 
-- **Status Tabs:** Filter by **All**, **Unsolved** (untried or counted score < 100), **In progress**, or **Solved** (best ≥ 100).
+- **Status Tabs:** Filter by **All**, **Unsolved** (untried or counted score < 100), **In progress**, or **Solved** (best ≥ 100). With the keyboard they are one <kbd>Tab</kbd> stop; the arrow keys pick another.
 - **Topic Pills (3 states):** Click a topic pill once to **show only** problems in that topic (filled with `✓`), click a second time to **hide** problems in that topic (red, struck through), and click a third time to turn it off. Set `cedtGrader.panel.topicClickOrder` to `hideFirst` if you prefer hiding on the first click.
 - **Tags Dropdown (`Tags`):** Filter by non-topic tags (e.g. `BFS`, `DP`, `Greedy`) combined with **Any (OR)** or **All (AND)**.
 - **Search & Sort:** Search by problem name, full title, or ID, and sort by **Default order**, **Default order (reversed)**, **Name A–Z**, **Name Z–A**, **Latest submission**, **Score (low → high)**, **Score (high → low)**, or **Recently opened**.
@@ -259,7 +265,7 @@ Controlled by `cedtGrader.fun.enabled` (default `true`; turning it `false` hides
   2. **3D Donut (`donut3d`):** Code spins into a 3D torus (`Grader: Take a Break: 3D Donut`).
   3. **2D Donut (`donut2d`):** Code spins into a flat text donut (`Grader: Take a Break: 2D Donut`).
   4. **Breathing (`breathe`):** Code forms a calm ring that expands and contracts with a 4-second breath cycle (`Grader: Take a Break: Breathing`).
-  5. **Swarm (`swarm`):** Code swirls through a 2D grid-fluid simulation following your pointer (`Grader: Take a Break: Swarm`).
+  5. **Swarm (`swarm`):** Code swirls through a 2D grid-fluid simulation around your pointer, for as long as it rests in the tab, and wanders once you move it away (`Grader: Take a Break: Swarm`).
 
 ---
 
@@ -315,4 +321,4 @@ In `v1.0.0`, links were stored in `.cedt-grader.json` and test cases were export
 
 ### Crashes & Bug Reports
 
-- If an unexpected error occurs, an inline **Something went wrong in Grader Submit** card displays the exact redacted report (all tokens, passwords, and personal paths removed). Click **Report on GitHub** to open a prefilled issue, or see [**`SUPPORT.md`**](SUPPORT.md).
+- If an unexpected error occurs, an inline **Grader Submit hit a problem** card displays the exact redacted report (all tokens, passwords, and personal paths removed). Click **Report on GitHub** to open a prefilled issue, or see [**`SUPPORT.md`**](SUPPORT.md).

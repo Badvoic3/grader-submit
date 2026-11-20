@@ -20,12 +20,12 @@ Most common setup, login, matching, and local test runner questions are answered
 If something breaks or behaves unexpectedly, please open an issue on GitHub:
 
 - **Crash Report Template:** [`.github/ISSUE_TEMPLATE/crash_report.yml`](.github/ISSUE_TEMPLATE/crash_report.yml) — [**Open a Crash Report on GitHub**](https://github.com/Badvoic3/cedt-grader-vscode/issues/new?template=crash_report.yml)
-  - When an unhandled error happens inside the extension, the panel also shows a **Something went wrong in Grader Submit** card with a **Report on GitHub** button that prefills this template after stripping tokens, passwords, and personal file paths.
+  - When an unhandled error happens inside the extension, the panel also shows a **Grader Submit hit a problem** card with a **Report on GitHub** button that prefills this template after stripping tokens, passwords, and personal file paths.
 - **All Other Bugs & Feature Requests:** [**GitHub Issues (`Badvoic3/cedt-grader-vscode/issues`)**](https://github.com/Badvoic3/cedt-grader-vscode/issues/new/choose)
 
 ### Helpful Details to Include
 
-1. **Extension version** (e.g. `1.1.0`) and **VS Code version** (*Help → About*).
+1. **Extension version** (e.g. `1.1.2`) and **VS Code version** (*Help → About*).
 2. **Operating system** (macOS, Windows, or Linux).
 3. **Steps to reproduce** (for example: whether Folder Mode was on, which language/compiler was used, or what the panel showed).
 4. **Request log (optional, for connection/server bugs):**

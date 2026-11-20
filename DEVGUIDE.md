@@ -19,9 +19,12 @@ npm run typecheck    # run tsc --noEmit on src/, webview/, and test/
 npm run check        # full gate: npm run build && npm test
 npm run package      # build a clean production .vsix (cedt-grader-submit-<version>.vsix)
 npx vsce ls          # inspect the exact files included in the .vsix package
+npm run fake-grader  # a local stand-in grader on http://127.0.0.1:9590 (password: demo)
 ```
 
 Press <kbd>F5</kbd> in VS Code to launch the **Extension Development Host**.
+
+**A grader to develop against:** `scripts/fake-grader.mjs` imitates a `cafe-grader-web` server with synthetic problems: test cases, a PDF statement with a sample table, zip and single-file attachments, a description-only statement, a raw-sum score, and submissions graded by polling. Set `"cedtGrader.baseUrl": "http://127.0.0.1:9590"` in the development host's user settings and log in with any name and the password `demo`. Scripts can import `startFakeGrader({ port: 0 })`, and its `/__offline`, `/__expire` and `/__exam/on` switches simulate a lost connection, an expired login and an exam page. `test/fakeGrader.test.ts` keeps it in step with the real client.
 
 ---
 
@@ -42,7 +45,7 @@ Grader Submit runs across two environments connected by typed `postMessage` chan
 |---|---|
 | `src/extension.ts` | Entry point (`activate`), command registration, webview/serializer registration. |
 | `src/controller.ts` | Central coordinator (`GraderController`) wiring state, events, and flow modules. |
-| `src/flows/` | Focused workflow modules: `submit.ts`, `links.ts`, `folderMode.ts`, `attachments.ts`, `runner.ts`, `cache.ts`, `explorerBadges.ts`, `breakReminder.ts`, `serverCheck.ts`, `panelReveal.ts`, `prompts.ts`. |
+| `src/flows/` | Focused workflow modules behind one `Host` interface (`host.ts`): `submit.ts`, `links.ts`, `folderMode.ts`, `attachments.ts`, `testcases.ts`, `runner.ts`, `cache.ts`, `explorerBadges.ts`, `breakReminder.ts`, `celebrate.ts`, `server.ts`, `panelReveal.ts`; their decisions live in pure helpers (`prompts.ts`, `results.ts`, `viewState.ts`, `breakRules.ts`). |
 | `src/grader/` | `GraderProvider` interface (`provider.ts`), scoring (`score.ts`), language mapping (`languages.ts`), redaction (`redact.ts`), and the `cafe-grader-web` implementation (`providers/cafeGrader/`). |
 | `src/runner/` | Pure, `vscode`-free local test runner: language/compiler detection (`languages.ts`), content-hash build cache (`compile.ts`), process-group execution (`execute.ts`), stdout comparison (`compare.ts`), bounded line/token diff (`diff.ts`), and case store (`store.ts`). |
 | `src/data/` | `DataService` (request deduplication, TTL, visibility gating), `statementStore.ts`, `testcaseStore.ts`, and `pdfSamples.ts` (PDF table extractor). |
@@ -50,7 +53,7 @@ Grader Submit runs across two environments connected by typed `postMessage` chan
 | `src/migration/` | One-time `v1.0.x` importer and recoverable cleanup (`importLinks.ts`, `oldFiles.ts`, `cph.ts`). |
 | `src/ui/` | Webview providers and panels (`sidebarProvider.ts`, `testPanel.ts`, `statementPanel.ts`, `breakPanel.ts`, `statusBar.ts`, `compareDocs.ts`). |
 | `src/shared/` | Shared constants (`constants.ts`), typed messages (`messages.ts`), English & Thai string tables (`strings.ts`, `strings.th.ts`, `i18n.ts`), and state keys (`stateKeys.ts`). |
-| `webview/` | Browser bundles (`main.ts`, `tests.ts`, `statement.ts`, `break.ts`, `breakScenes.ts`, `style.css`, `tests.css`). |
+| `webview/` | Browser bundles: the sidebar (`main.ts`, one module per section in `panel/`), the Test view (`tests.ts`), the statement viewer (`statement.ts`), the break tab (`break/`), and their stylesheets. |
 | `test/` | Vitest test suites (`*.test.ts`). Tests use local fakes only and never contact a live grader. |
 
 ---
@@ -71,7 +74,7 @@ Every module under `src/runner/` is prohibited from importing `vscode` (enforced
 ### Centralization Rules (Enforced by Tests)
 
 - **Tunables (`src/shared/constants.ts`):** Timeouts, cache caps, runner limits, and URLs live in `src/shared/constants.ts`.
-- **User-facing strings (`src/shared/strings.ts` & `src/shared/strings.th.ts`):** All UI labels, tooltips, notifications, and error messages live in the string tables (`test/i18n.test.ts` checks that every key is translated, all placeholders match, and no unused keys remain).
+- **User-facing strings (`src/shared/strings.ts` & `src/shared/strings.th.ts`):** All UI labels, tooltips, notifications, and error messages live in the string tables (`test/i18n.test.ts` checks that every key is translated, all placeholders match, and no unused keys remain). The tables are split by who reads them: the host's (`S`, `PICK_HOW`, `MATCH_SOURCE`) and the webviews' (`W`, `W_SOURCE`, `HOW_LINKED`, `G`). Webviews switch theirs with `setWebLanguage`, and `test/webviewTexts.test.ts` fails if a host table gets into a webview bundle. `strings.th.ts` keeps each table as its own `TH_*` constant for the same reason.
 - **State keys (`src/shared/stateKeys.ts`):** All `globalState` and `workspaceState` keys are registered in `KEYS` (`test/stateKeys.test.ts`).
 
 ---
