@@ -192,15 +192,19 @@ export class FolderMode {
     const sub = this.role('submit');
     const run = this.role('run');
     const why = (w: RoleWhy | undefined, run?: string) => (w ? S.folder.why[w](run ?? '') : null);
+    // Without this role's choice (the other one stays: a chosen run file decides the submit file).
+    const auto = (role: 'submit' | 'run') => folderRole(role, { files: this.files, submitFile: role === 'submit' ? undefined : link.entry.submitFile, runFile: role === 'run' ? undefined : link.entry.runFile, texts: this.texts, roles: this.roles })?.file ?? null;
     return {
       path: `${this.label(link.fsPath, false)}/`,
       matched: this.matched,
       submitFile: sub?.file ?? null,
       submitWhy: why(sub?.why, run?.file),
       submitChosen: sub?.why === 'chosen',
+      submitAuto: auto('submit'),
       runFile: run?.file ?? null,
       runWhy: why(run?.why),
       runChosen: run?.why === 'chosen',
+      runAuto: auto('run'),
       candidates: this.files,
       runCandidates: runSources(this.files),
     };

@@ -436,8 +436,8 @@ describe.runIf(existsSync(resolve(__dirname, '../esbuild.mjs')))('sidebar webvie
       { ...loggedIn, testcases: { busy: true } },
       // Attachment + folder mode: download icon (also busy), folder toggle (also disabled), submit-file select.
       withAttachment({ folderMode: { on: false, disabledReason: 'This file is at the top of the workspace folder.' }, attachment: { busy: 1360 } }),
-      withAttachment({ folder: { path: 'pkg/', matched: false, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'no-cases' }, running: false, disabledReason: 'add or load test cases first', testsOpen: false } }),
-      withAttachment({ folder: { ...({ path: 'pkg/', matched: false, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] }), submitFile: null, submitWhy: null, runFile: null, runWhy: null }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'not-run' }, running: false, disabledReason: null, testsOpen: false } }),
+      withAttachment({ folder: { path: 'pkg/', matched: false, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, submitAuto: null, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, runAuto: null, candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'no-cases' }, running: false, disabledReason: 'add or load test cases first', testsOpen: false } }),
+      withAttachment({ folder: { ...({ path: 'pkg/', matched: false, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, submitAuto: null, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, runAuto: null, candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] }), submitFile: null, submitWhy: null, runFile: null, runWhy: null }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'not-run' }, running: false, disabledReason: null, testsOpen: false } }),
       {
         ...loggedIn,
         history: {
@@ -508,7 +508,7 @@ describe.runIf(existsSync(resolve(__dirname, '../esbuild.mjs')))('sidebar webvie
     expect(off.disabled).toBe(true);
     expect(off.dataset.tip).toContain('top of the workspace folder');
     // In folder mode.
-    post(withAttachment({ folder: { path: 'pkg/', matched: false, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'not-run' }, running: false, disabledReason: null, testsOpen: false } }));
+    post(withAttachment({ folder: { path: 'pkg/', matched: false, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, submitAuto: null, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, runAuto: null, candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'not-run' }, running: false, disabledReason: null, testsOpen: false } }));
     const cur = doc.querySelector('#sec-current')!;
     expect(cur.querySelector('.source-line.source-folder')!.textContent).toBe('Folder linked by you: pkg/');
     expect(header(doc).querySelector('[aria-label="Link only this file"]')).not.toBeNull();
@@ -530,10 +530,20 @@ describe.runIf(existsSync(resolve(__dirname, '../esbuild.mjs')))('sidebar webvie
     pick.value = '';
     pick.dispatchEvent(new W.Event('change'));
     expect(sent.at(-1)).toEqual({ type: 'setFolderRole', role: 'submit', file: '' }); // back to automatic
+    // A saved choice: the first option still names what Automatic would pick (it read "Asked on the first submit").
+    const chosen = { path: 'pkg/', matched: false, submitFile: 'vector.h', submitWhy: 'your choice', submitChosen: true, submitAuto: 'student.h' as string | null, runFile: 'main.cpp', runWhy: 'your choice', runChosen: true, runAuto: 'main.cpp', candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] };
+    post(withAttachment({ folder: chosen, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'not-run' }, running: false, disabledReason: null, testsOpen: false } }));
+    const picked = doc.querySelector<HTMLSelectElement>('#submit-file')!;
+    expect([...picked.options].map((o) => o.textContent)).toEqual(['Automatic: student.h', 'main.cpp', 'student.h', 'vector.h']);
+    expect(picked.selectedOptions[0].textContent).toBe('vector.h');
+    expect(doc.querySelector<HTMLSelectElement>('#run-file')!.options[0].textContent).toBe('Automatic: main.cpp');
+    // Nothing to detect: Automatic would ask on the first submit, and says so.
+    post(withAttachment({ folder: { ...chosen, submitAuto: null }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'not-run' }, running: false, disabledReason: null, testsOpen: false } }));
+    expect(doc.querySelector<HTMLSelectElement>('#submit-file')!.options[0].textContent).toBe('Asked on the first submit');
     // Run tests: disabled until there are test cases.
     [...cur.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Run tests'))!.click();
     expect(sent.at(-1)).toEqual({ type: 'runTests' });
-    post(withAttachment({ folder: { path: 'pkg/', matched: false, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'no-cases' }, running: false, disabledReason: 'add or load test cases first', testsOpen: false } }));
+    post(withAttachment({ folder: { path: 'pkg/', matched: false, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, submitAuto: null, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, runAuto: null, candidates: ['main.cpp', 'student.h', 'vector.h'], runCandidates: ['main.cpp'] }, folderMode: { on: true, disabledReason: null }, runTests: { summary: { kind: 'no-cases' }, running: false, disabledReason: 'add or load test cases first', testsOpen: false } }));
     const run = [...cur.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('Run tests'))!;
     expect(run.disabled).toBe(true);
     expect(run.dataset.tip).toContain('add or load test cases first');
@@ -546,7 +556,7 @@ describe.runIf(existsSync(resolve(__dirname, '../esbuild.mjs')))('sidebar webvie
     // ...and its files are detected like a linked folder's (nothing saved until a choice): Submits / Runs shown,
     // the match line stays "Matched by folder name", the folder icon still offers to link it.
     post({
-      ...withAttachment({ folder: { path: 'pkg/', matched: true, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, candidates: ['main.cpp', 'student.h'], runCandidates: ['main.cpp'] }, folderMode: { on: false, disabledReason: null } }),
+      ...withAttachment({ folder: { path: 'pkg/', matched: true, submitFile: 'student.h', submitWhy: 'the included file named student.*', submitChosen: false, submitAuto: null, runFile: 'main.cpp', runWhy: 'the only file with main()', runChosen: false, runAuto: null, candidates: ['main.cpp', 'student.h'], runCandidates: ['main.cpp'] }, folderMode: { on: false, disabledReason: null } }),
       problem: { ...withAttachment().problem!, source: 'folder', sourceLabel: 'Matched by folder name' },
     });
     expect(cur.querySelector('.source-line.source-folder')!.textContent).toBe('Matched by folder name');

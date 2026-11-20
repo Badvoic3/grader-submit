@@ -13,6 +13,7 @@
 
 ### Submitting
 - **Show Last Result after you stop waiting:** pressing **Cancel** on the "Grading …" notification (or waiting past 3 minutes) said to use **Show Last Result**, which then showed the submission before it. It now shows the one you just sent.
+- **Submits and Runs always say what Automatic picks:** in folder mode, once you chose a file, the dropdown's first option read "Asked on the first submit" although picking it brings back the detected file. It now reads "Automatic: student.h" (or whichever file is detected).
 - **The compiler message and old versions open read-only:** **Open in editor** on a compile error and **Open this version** in History opened an unsaved Untitled tab that asked to be saved when you closed it. They now open read-only, and an old version's tab says which attempt it is.
 
 ### Keyboard and screen readers

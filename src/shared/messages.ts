@@ -211,10 +211,14 @@ export interface ViewState {
     submitWhy: string | null;
     /** The user picked it (else detected): the dropdown's "Automatic" option is not selected. */
     submitChosen: boolean;
+    /** What "Automatic" would pick without the user's choice (null: asked on the first submit), so the option can say so. */
+    submitAuto: string | null;
     /** The program Run tests runs (the driver with main()). */
     runFile: string | null;
     runWhy: string | null;
     runChosen: boolean;
+    /** The same for the run file (null: asked when needed). */
+    runAuto: string | null;
     /** The folder's source files (submit choices). */
     candidates: string[];
     /** C/C++ sources (run choices). */

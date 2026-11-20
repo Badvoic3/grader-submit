@@ -197,8 +197,8 @@ export function renderCurrent(s: ViewState): void {
     if (s.folder) {
       const F = s.folder;
       b.append(
-        rolePicker('submit-file', W.submits, 'submit', F.submitFile, F.submitChosen, F.submitWhy, F.candidates, W.submitFileAsk, W.submitFileTip),
-        rolePicker('run-file', W.runs, 'run', F.runFile, F.runChosen, F.runWhy, F.runCandidates, W.runFileAsk, W.runFileTip),
+        rolePicker('submit-file', W.submits, 'submit', F.submitFile, F.submitChosen, F.submitAuto, F.submitWhy, F.candidates, W.submitFileAsk, W.submitFileTip),
+        rolePicker('run-file', W.runs, 'run', F.runFile, F.runChosen, F.runAuto, F.runWhy, F.runCandidates, W.runFileAsk, W.runFileTip),
         el('p', { class: 'small muted' }, W.submitFileTip),
       );
     }
@@ -343,11 +343,12 @@ export function sourceLine(source: string, problemId: number, name: string): HTM
 
 /**
  * Folder mode: one role's dropdown ("Submits" / "Runs"). The first option is
- * "Automatic: <detected file>" (or "asked when needed"); picking a file is
+ * "Automatic: <detected file>" (or "asked when needed"), also while a file is chosen; picking a file is
  * remembered for the folder; picking Automatic again forgets the choice.
  */
-export function rolePicker(id: string, label: string, role: 'submit' | 'run', file: string | null, chosen: boolean, why: string | null, files: string[], askText: string, tip: string): HTMLElement {
-  const detected = chosen ? null : file;
+export function rolePicker(id: string, label: string, role: 'submit' | 'run', file: string | null, chosen: boolean, auto: string | null, why: string | null, files: string[], askText: string, tip: string): HTMLElement {
+  // With a saved choice the option still names what Automatic would pick (it used to read "Asked on the first submit").
+  const detected = chosen ? auto : file;
   const pick = el('select', {
     id,
     disabled: !files.length,
