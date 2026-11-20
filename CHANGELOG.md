@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.2 — Unreleased
+## 1.1.2 — 2026-11-20
 
 ### Test view
 - **The input always shows** on every case, passed or failed (it used to fold away once a case had run). Its fold still closes it.
@@ -8,7 +8,6 @@
 - **Results older than your code are marked:** after you edit the file (or any source of a linked folder), the run summary turns grey with a clock, in the panel and in the Tests view, and the Tests view says the results are from before your last edit. Undoing back to the same code, or running again, clears it.
 - **Load results show in the Tests view:** pressing **Load test cases** or **Load samples** there shows what was loaded, or what went wrong, right under the buttons (with **Open statement** or **Download again** where it helps), instead of a pop-up.
 - **Go to line for compile errors:** a compile error has a **Go to line** button, in the Tests view for your compiler and on the Result card for the grader's.
-
 - **`Grader: Open Tests` always opens the Tests view:** run from the Command Palette or a key binding while the view was showing, it used to close it. The panel's **Open tests** / **Close tests** button still does both.
 
 ### Submitting
@@ -23,6 +22,14 @@
 ### Statements
 - **Zooming the statement no longer zooms VS Code:** **Cmd/Ctrl +** and **Cmd/Ctrl −** in the statement tab zoomed the PDF and the whole VS Code window at once. They now zoom only the PDF, and **Cmd/Ctrl+F** only searches the statement.
 - **pdf.js 6:** the statement viewer and **Load samples** now use pdf.js 6.5 (it was 4.10, which no longer gets fixes). Images in scanned statements (JPEG 2000, JBIG2) are decoded by pdf.js's newer decoders, CMYK colours use a colour profile, and **Load samples** reads more statements correctly (on statements drawn with shaded cells it used to find nothing, or cut text short).
+
+### Reliability
+- **Account switches stay clean:** a login that finishes after you log out, or a problem list that arrives after you switch accounts, no longer lands in the new session.
+- **Submit pressed twice sends once,** and a submission that stalls while downloading is reported as a connection problem, with whether anything was sent.
+- **Downloads wait as the grader asks** (`Retry-After`) when it is busy, and a refused web login is never retried by itself.
+- **The statement viewer keeps up** when you switch between problems quickly, and keeps its page and zoom when its tab closes.
+- **Clean Up Old Files** copies your old links before it moves anything to the Trash, and raw-sum problems show their score in the Explorer badges.
+- **Faster matching** in big folders: finding the problem for each file takes about 40 % less time.
 
 ### Take a break
 - **Swarm stays with a resting mouse:** your code now swirls around the cursor for as long as it rests in the tab, and starts to wander only once the cursor leaves (the 5-second idle timer is gone).
