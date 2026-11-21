@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Attachments
+- **Choose where attachments are saved** (`cedtGrader.attachments.saveTo`): beside the active file (`activeFileFolder`, the default and the old behaviour), at the workspace root (`workspaceRoot`), or in a folder you pick each time (`ask`). Contributed by @atsuiiw.
+
 ## 1.1.2 — 2026-11-20
 
 ### Test view

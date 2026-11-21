@@ -136,6 +136,7 @@ Click **Download attachment** on the current problem or any problem row (or run 
 - **Zip package:** Inspected before extraction (refuses path traversal, > 500 entries, or > 50 MB; skips `__MACOSX`, hidden `.git` / `.vscode` folders, and pre-compiled binaries). Then choose:
   - **Name it after the problem (`<problem>/`) and link it** — extracts into a new folder and enables Folder Mode automatically.
   - **Keep the original name (`<name>/`), don't link** — extracts into a new folder without linking.
+- **Where it goes (`cedtGrader.attachments.saveTo`):** `activeFileFolder` (default) saves beside your active file, `workspaceRoot` saves at the workspace root (in a multi-root workspace, the root that holds the active file), and `ask` asks for a folder every time.
 
 ### Automatic `Submits` and `Runs` Detection
 

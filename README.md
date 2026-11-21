@@ -129,6 +129,7 @@ For step-by-step walkthroughs and annotated UI diagrams, see the [**User Guide (
 | `cedtGrader.statementFollowsFile` | `true` | Switch an open statement tab to match the active source file's problem. |
 | `cedtGrader.defaultLanguage` | `C++` | Fallback language for **New file for this problem**. |
 | `cedtGrader.fileNamePattern` | `{name}.{ext}` | Pattern for **New file for this problem**, **Rename file to match the problem**, and auto-matching (`{name}`, `{id}`, `{ext}`). |
+| `cedtGrader.attachments.saveTo` | `activeFileFolder` | Where **Download attachment** saves: `activeFileFolder` (beside the active file), `workspaceRoot`, or `ask` (pick a folder each time). |
 | `cedtGrader.runner.defaultTimeLimitSeconds` | `10` | Local test run time limit (seconds) when the grader does not specify one. |
 | `cedtGrader.runner.defaultMemoryLimitMB` | `1024` | Local test run memory limit (MB, estimated on macOS/Linux) when the grader does not specify one. |
 | `cedtGrader.runner.compilerPaths` | `{}` | Custom tool paths by executable name, e.g. `{ "g++": "/opt/homebrew/bin/g++-14" }`. |

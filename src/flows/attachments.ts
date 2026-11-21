@@ -10,25 +10,33 @@ import type { Host } from './host';
 
 /**
  * The problem's attachment (the website's "File"), only on click: saved
- * where `cedtGrader.attachments.saveTo` says (default: the workspace root).
- * A single file may be renamed to match the problem; a zip is extracted into a NEW folder,
- * after one question that also offers folder mode. Never overwrites.
+ * where `cedtGrader.attachments.saveTo` says (default: beside the active
+ * file). A single file may be renamed to match the problem; a zip is
+ * extracted into a NEW folder, after one question that also offers folder mode. Never overwrites.
  * Extraction rules: src/mapping/attachment.ts.
  */
 export class Attachments {
   constructor(private readonly host: Host) {}
 
-  /** Where the attachment goes (`cedtGrader.attachments.saveTo`); falls back to targetFolder(). */
-  private async saveFolder(): Promise<vscode.Uri | undefined> {
+  /**
+   * Where the attachment goes (`cedtGrader.attachments.saveTo`); undefined
+   * when a folder picker is cancelled. `activeFileFolder`, and `workspaceRoot`
+   * with no workspace open, use targetFolder(): beside the active file, else
+   * the first root, else a picker.
+   */
+  async saveFolder(): Promise<vscode.Uri | undefined> {
     const h = this.host;
     const mode = h.cfg.attachmentsSaveTo;
-    if (mode === 'ask') return (await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: S.files.saveHere, defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri }))?.[0];
+    if (mode === 'ask') {
+      const picked = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: S.files.saveHere, defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri });
+      return picked?.[0];
+    }
     if (mode === 'workspaceRoot') {
       // Multi-root: the root that holds the active file, else the first one.
       const root = (h.fileUri && vscode.workspace.getWorkspaceFolder(h.fileUri)?.uri) ?? vscode.workspace.workspaceFolders?.[0]?.uri;
       if (root) return root;
     }
-    return h.links.targetFolder(); // activeFileFolder, or no workspace open
+    return h.links.targetFolder();
   }
 
   async download(problemId?: number): Promise<void> {

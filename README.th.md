@@ -129,6 +129,7 @@
 | `cedtGrader.statementFollowsFile` | `true` | เปลี่ยนแท็บโจทย์ที่เปิดอยู่ให้ตรงกับโจทย์ของไฟล์ที่สลับไปดูอัตโนมัติ |
 | `cedtGrader.defaultLanguage` | `C++` | ภาษาเริ่มต้นสำหรับคำสั่ง **สร้างไฟล์ใหม่สำหรับโจทย์นี้** |
 | `cedtGrader.fileNamePattern` | `{name}.{ext}` | รูปแบบชื่อไฟล์เมื่อสร้างไฟล์ใหม่ เปลี่ยนชื่อไฟล์ให้ตรงกับโจทย์ และจับคู่ชื่อไฟล์อัตโนมัติ (`{name}`, `{id}`, `{ext}`) |
+| `cedtGrader.attachments.saveTo` | `activeFileFolder` | ตำแหน่งที่ **ดาวน์โหลดไฟล์แนบ** บันทึกไฟล์: `activeFileFolder` (ข้างไฟล์ที่เปิดอยู่), `workspaceRoot` (โฟลเดอร์หลักของ workspace) หรือ `ask` (ถามโฟลเดอร์ทุกครั้ง) |
 | `cedtGrader.runner.defaultTimeLimitSeconds` | `10` | เวลาจำกัดเริ่มต้น (วินาที) สำหรับการรันทดสอบบนเครื่องเมื่อโจทย์ไม่ได้ระบุไว้ |
 | `cedtGrader.runner.defaultMemoryLimitMB` | `1024` | ขีดจำกัดหน่วยความจำเริ่มต้น (MB, ค่าประมาณบน macOS/Linux) เมื่อโจทย์ไม่ได้ระบุไว้ |
 | `cedtGrader.runner.compilerPaths` | `{}` | พาธของคอมไพเลอร์หรือตัวแปลภาษาแยกตามชื่อเครื่องมือ เช่น `{ "g++": "/opt/homebrew/bin/g++-14" }` |
