@@ -62,6 +62,8 @@ export interface GraderConfig {
   funBreakScene: BreakSceneSetting;
   /** `en` (default), `th`, or `auto` (follow VS Code's display language). */
   displayLanguage: LangSetting;
+  /** attachment location */
+  attachmentsSaveTo: 'workspaceRoot' | 'activeFileFolder' | 'ask';
 }
 
 function stringRecord(v: unknown): Record<string, string> {
@@ -110,6 +112,7 @@ export function readConfig(): GraderConfig {
     topicClickOrder: c.get<string>('panel.topicClickOrder', 'showFirst') === 'hideFirst' ? 'hideFirst' : 'showFirst',
     fileNamePattern: checkPattern(c.get<string>('fileNamePattern', '{name}.{ext}')),
     explorerBadge: ((v) => (v === 'tag' || v === 'off' ? v : 'score'))(c.get<string>('explorer.badge', 'score')),
+    attachmentsSaveTo: ((v) => (v === 'activeFileFolder' || v === 'ask' ? v : 'workspaceRoot'))(c.get<string>('attachments.saveTo', 'workspaceRoot')),
     explorerColors: c.get<boolean>('explorer.colors', true) !== false,
     funEnabled: c.get<boolean>('fun.enabled', true) !== false,
     funCelebrate: c.get<boolean>('fun.enabled', true) !== false && c.get<boolean>('fun.celebrate', true) !== false,
